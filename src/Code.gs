@@ -267,6 +267,10 @@ function tunjukLinkWebApp() {
 }
 
 // ════════════════════════════════════════════════════════════════
+// BACKUP
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
 // FOLDER SISTEM — semua fail sistem dalam satu folder Drive
 // SEMAK - Sistem Markah/
 //   ├─ (fail spreadsheet ini)
@@ -304,10 +308,6 @@ function pindahKeFolderSistem(senyap) {
     SpreadsheetApp.getUi().alert(
       "📁 Fail dipindahkan ke folder Drive:\n'" + NAMA_SISTEM + "'");
 }
-
-// ════════════════════════════════════════════════════════════════
-// BACKUP
-// ════════════════════════════════════════════════════════════════
 
 function buatBackup(senyap) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
@@ -537,6 +537,8 @@ function segerakMurid(senyap) {
   var lastRow = sMu.getLastRow();
   if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
   if (senarai.length) sMu.getRange(2, 1, senarai.length, 6).setValues(senarai);
+  if (typeof segerakCalonPeperiksaanAktif === "function")
+    segerakCalonPeperiksaanAktif();
 
   if (senyap !== true)
     SpreadsheetApp.getUi().alert("🔄 " + senarai.length + " murid disegerak dari Sheet1.");
