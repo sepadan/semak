@@ -1214,10 +1214,15 @@ function _jawapanRpcGitHub(id, ok, hasil, ralat) {
     ok: ok,
     hasil: hasil,
     ralat: ralat || ""
-  }).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
+  });
+  // Base64 memastikan nama murid atau data Sheet tidak boleh memecahkan
+  // JavaScript di dalam respons HTML (termasuk aksara Unicode luar biasa).
+  var muatan64 = Utilities.base64Encode(muatan, Utilities.Charset.UTF_8);
 
   var html = "<!doctype html><html><head><meta charset='utf-8'></head><body>" +
-    "<script>(function(){var p=" + muatan + ";" +
+    "<script>(function(){var b=atob('" + muatan64 + "'),a=new Uint8Array(b.length);" +
+    "for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);" +
+    "var p=JSON.parse(new TextDecoder('utf-8').decode(a));" +
     "try{window.parent.postMessage(p,'*');}catch(e){}" +
     "try{window.parent.parent.postMessage(p,'https://sepadan.github.io');}catch(e){}" +
     "try{window.parent.parent.parent.postMessage(p,'https://sepadan.github.io');}catch(e){}" +
