@@ -1,0 +1,16 @@
+# clasp — mengandungi scriptId khusus projek anda
+.clasp.json
+
+# Node / alat pembangunan
+node_modules/
+npm-debug.log*
+
+# Fail sementara sistem
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Eksport data sebenar murid — JANGAN commit
+data/
+*.csv

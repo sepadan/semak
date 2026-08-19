@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEMAK — Sistem Markah</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root { --biru:#1a237e; --biru2:#3949ab; --biru3:#e8eaf6; --hijau:#2e7d32; --merah:#c62828; }
+  * { box-sizing:border-box; }
+  body { font-family:Arial,sans-serif; margin:0; background:#f0f2f5; color:#222; font-size:10.5pt; }
+
+  .hdr { background:var(--biru); color:white; padding:14px 20px; display:flex;
+         flex-wrap:wrap; align-items:center; gap:14px; }
+  .hdr h1 { margin:0; font-size:13.5pt; flex:1; min-width:220px; }
+  .hdr select { padding:8px 10px; border-radius:6px; border:none; font-size:10pt; }
+  .hdr button { padding:8px 14px; border-radius:6px; border:none; background:#3949ab;
+                color:white; cursor:pointer; font-size:10pt; font-weight:bold; }
+  .hdr button:hover { background:#5c6bc0; }
+  .chip { background:#c5cae9; color:var(--biru); padding:6px 12px; border-radius:16px;
+          font-size:9.5pt; font-weight:bold; }
+
+  .tabs { display:flex; background:white; border-bottom:2px solid var(--biru3);
+          overflow-x:auto; position:sticky; top:0; z-index:10; }
+  .tab { padding:12px 18px; cursor:pointer; font-weight:bold; font-size:10pt; color:#666;
+         border-bottom:3px solid transparent; white-space:nowrap; user-select:none; display:none; }
+  .tab.papar { display:block; }
+  .tab:hover { background:var(--biru3); }
+  .tab.aktif { color:var(--biru); border-bottom-color:var(--biru); }
+
+  .kandungan { max-width:1200px; margin:0 auto; padding:16px; }
+  .panel { display:none; } .panel.aktif { display:block; }
+
+  .baris-pilih { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center; }
+  select, input[type=text], input[type=password] { padding:9px 12px; border:1.5px solid #c5cae9;
+    border-radius:6px; font-size:10.5pt; background:white; }
+  select:focus, input:focus { outline:none; border-color:var(--biru2); }
+
+  .kotak { background:white; border-radius:10px; padding:16px;
+           box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:16px; }
+  .kotak h3 { margin:0 0 12px; font-size:11pt; color:var(--biru);
+              border-bottom:2px solid var(--biru3); padding-bottom:8px; }
+
+  table { width:100%; border-collapse:collapse; font-size:9.5pt; }
+  th { background:var(--biru2); color:white; padding:8px 6px; border:1px solid #c5cae9; font-size:9pt; }
+  td { padding:5px 6px; border:1px solid #ddd; text-align:center; }
+  td.kiri { text-align:left; }
+  tr:nth-child(even) td { background:#f8f9ff; }
+  .jadual-skrol { overflow-x:auto; }
+
+  input.markah { width:64px; padding:6px; text-align:center; border:1.5px solid #c5cae9;
+                 border-radius:5px; font-size:10pt; }
+  input.markah:disabled { background:#eee; color:#999; }
+  input.markah.salah { border-color:var(--merah); background:#ffebee; }
+  .gred-sel { font-weight:bold; width:44px; display:inline-block; }
+
+  .g-A{background:#e8f5e9!important;font-weight:bold} .g-B{background:#f1f8e9!important}
+  .g-C{background:#fffde7!important} .g-D{background:#fff3e0!important}
+  .g-E{background:#fce4ec!important} .g-F{background:#ffebee!important;color:var(--merah);font-weight:bold}
+  .g-TH{background:#f5f5f5!important;color:#888}
+
+  .btn { padding:11px 24px; background:var(--biru); color:white; border:none; border-radius:6px;
+         font-size:10.5pt; font-weight:bold; cursor:pointer; }
+  .btn:hover { background:#283593; } .btn:disabled { background:#9fa8da; cursor:not-allowed; }
+  .btn-kecil { padding:8px 14px; font-size:9.5pt; }
+  .btn-merah { background:var(--merah); } .btn-merah:hover { background:#e53935; }
+
+  .status { margin-top:12px; padding:11px; border-radius:6px; font-size:10pt; display:none; }
+  .ok { background:#e8f5e9; color:var(--hijau); border:1px solid #a5d6a7; }
+  .err { background:#ffebee; color:var(--merah); border:1px solid #ef9a9a; }
+  .loading { background:var(--biru3); color:var(--biru); border:1px solid #9fa8da; }
+
+  .kad-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+              gap:10px; margin-bottom:14px; }
+  .kad { background:white; border-radius:10px; padding:12px 14px;
+         box-shadow:0 1px 4px rgba(0,0,0,.08); text-align:center; }
+  .kad label { display:block; font-size:8.5pt; color:#777; font-weight:bold; margin-bottom:4px; }
+  .kad span { font-size:15pt; font-weight:bold; color:var(--biru); }
+  .carta { position:relative; height:300px; }
+
+  .st-penuh { background:#c8e6c9!important; font-weight:bold; }
+  .st-separa { background:#fff9c4!important; }
+  .st-kosong { background:#ffcdd2!important; }
+  .st-na { background:#eeeeee!important; color:#aaa; }
+  .guru-kecil { display:block; font-size:7.5pt; color:#555; margin-top:2px; }
+
+  .lencana-kunci { background:#ffebee; color:var(--merah); padding:4px 10px; border-radius:12px;
+                   font-size:9pt; font-weight:bold; }
+
+  .cek-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:6px;
+              margin:8px 0 14px; }
+  .cek-grid label { font-size:9.5pt; background:#f8f9ff; border:1px solid #e0e0e0;
+                    border-radius:5px; padding:7px 9px; cursor:pointer; display:flex;
+                    align-items:center; gap:6px; }
+  .cek-grid label:hover { background:var(--biru3); }
+
+  select.sel-guru { padding:4px 6px; font-size:8.5pt; max-width:130px; border-radius:4px; }
+
+  /* Jadual Tugasan Guru: paparan padat, senarai nama kekal jelas apabila dipilih */
+  #tTugasan { table-layout:fixed; min-width:100%; }
+  #tTugasan th:first-child, #tTugasan td:first-child { width:88px; }
+  #tTugasan th:nth-child(2), #tTugasan td:nth-child(2) { width:120px; }
+  #tTugasan th:not(:first-child):not(:nth-child(2)),
+  #tTugasan td:not(:first-child):not(:nth-child(2)) { width:106px; }
+  #tTugasan .guru-tugas, #tTugasan .guru-kelas {
+    width:100%; max-width:100%; padding:4px 6px; font-size:8.5pt; border-radius:4px;
+  }
+  #tTugasan .guru-tugas:focus, #tTugasan .guru-kelas:focus {
+    position:absolute; z-index:20; width:260px; max-width:none;
+  }
+
+  /* Modal login */
+  .modal-latar { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100;
+                 align-items:center; justify-content:center; }
+  .modal { background:white; border-radius:12px; padding:26px; width:92%; max-width:400px;
+           box-shadow:0 8px 32px rgba(0,0,0,.3); }
+  .modal h3 { margin:0 0 16px; color:var(--biru); }
+  .pilih-peranan { display:flex; gap:12px; }
+  .pilih-peranan button { flex:1; padding:22px 10px; border:2px solid #c5cae9; background:white;
+    border-radius:10px; cursor:pointer; font-size:11pt; font-weight:bold; color:var(--biru); }
+  .pilih-peranan button:hover { background:var(--biru3); border-color:var(--biru2); }
+  .modal input, .modal select { width:100%; margin-bottom:12px; }
+  .modal .btn { width:100%; }
+  .modal .tutup { background:none; border:none; color:#888; cursor:pointer; margin-top:10px;
+                  width:100%; font-size:9.5pt; }
+
+  #muat { text-align:center; padding:70px 20px; color:var(--biru); font-weight:bold; }
+  .spinner { border:4px solid var(--biru3); border-top:4px solid var(--biru); border-radius:50%;
+             width:38px; height:38px; animation:p 1s linear infinite; margin:0 auto 14px; }
+  @keyframes p { to { transform:rotate(360deg); } }
+
+  /* ═══ RESPONSIF: TABLET (≤900px) ═══ */
+  @media (max-width: 900px) {
+    .kandungan { padding: 12px; }
+    .tab { padding: 11px 13px; font-size: 9.5pt; }
+    th { font-size: 8.5pt; padding: 7px 5px; }
+    td { padding: 5px 5px; }
+    .jadual-skrol { -webkit-overflow-scrolling: touch; }
+    /* Lajur nama kekal kelihatan semasa skrol mendatar */
+    #tIsi th:nth-child(2), #tIsi td:nth-child(2),
+    #tStatus th:first-child, #tStatus td:first-child,
+    #tTugasan th:first-child, #tTugasan td:first-child,
+    #tKonfigPep th:first-child, #tKonfigPep td:first-child {
+      position: sticky; left: 0; z-index: 2;
+      box-shadow: 2px 0 4px rgba(0,0,0,.08);
+    }
+    #tIsi td:nth-child(2), #tStatus td:first-child,
+    #tTugasan td:first-child, #tKonfigPep td:first-child { background: #fff; }
+    #tIsi tr:nth-child(even) td:nth-child(2),
+    #tStatus tr:nth-child(even) td:first-child,
+    #tTugasan tr:nth-child(even) td:first-child,
+    #tKonfigPep tr:nth-child(even) td:first-child { background: #f8f9ff; }
+    .carta { height: 260px; }
+  }
+
+  /* ═══ RESPONSIF: TELEFON (≤600px) ═══ */
+  @media (max-width: 600px) {
+    body { font-size: 10pt; }
+    .hdr { padding: 10px 12px; gap: 8px; }
+    .hdr h1 { font-size: 11.5pt; flex-basis: 100%; min-width: 0; }
+    .hdr h1 img#hLogo { height: 34px !important; }
+    .hdr select { flex: 1; min-width: 0; }
+    .hdr button { padding: 8px 12px; font-size: 9.5pt; }
+    .chip { font-size: 8.5pt; padding: 5px 10px; }
+
+    .kandungan { padding: 8px; }
+    .kotak { padding: 12px; border-radius: 8px; }
+    .kotak h3 { font-size: 10.5pt; }
+
+    /* Input & dropdown penuh lebar + font 16px (elak auto-zoom iOS) */
+    .baris-pilih { gap: 8px; }
+    .baris-pilih select, .baris-pilih input[type=text],
+    .baris-pilih input[type=password], .baris-pilih input[type=file] {
+      width: 100%; min-width: 0 !important; }
+    select, input[type=text], input[type=password] { font-size: 16px; }
+    input.markah { font-size: 16px; width: 60px; padding: 8px 4px; }
+
+    /* Butang mesra jari */
+    .btn { width: 100%; padding: 13px 16px; }
+    .btn-kecil { padding: 11px 14px; }
+    .pilih-peranan button { padding: 18px 8px; font-size: 10.5pt; }
+
+    table { font-size: 8.5pt; }
+    th { font-size: 8pt; padding: 6px 4px; }
+    select.sel-guru, select.sel-guru-kelas { font-size: 12px; max-width: 110px; }
+
+    .kad-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .kad { padding: 10px 8px; }
+    .kad span { font-size: 12.5pt; }
+    .kad label { font-size: 7.5pt; }
+    .carta { height: 220px; }
+    .cek-grid { grid-template-columns: repeat(2, 1fr); }
+    .cek-grid label { font-size: 8.5pt; padding: 8px 7px; }
+    .modal { padding: 20px; }
+  }
+
+  /* Cetak */
+  #printArea { display:none; }
+  @media print {
+    body > *:not(#printArea) { display:none !important; }
+    body { background:white; }
+    #printArea { display:block !important; }
+    .slip { page-break-after:always; padding:10px; }
+    .slip:last-child { page-break-after:avoid; }
+    .lap { padding:10px; }
+  }
+  #printArea table { width:100%; border-collapse:collapse; font-size:9.5pt; }
+  #printArea th { background:#3949ab; color:white; padding:6px; border:1px solid #999;
+                  -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #printArea td { padding:5px 7px; border:1px solid #999; text-align:center; }
+  #printArea .hdr-cetak { background:#1a237e; color:white; padding:10px 14px; text-align:center;
+    border-radius:6px; margin-bottom:10px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #printArea .hdr-cetak h2 { margin:0; font-size:13pt; }
+  #printArea .hdr-cetak p { margin:3px 0 0; font-size:9pt; }
+  #printArea .ttd-baris { display:flex; gap:24px; margin-top:34px; }
+  #printArea .ttd { flex:1; text-align:center; font-size:9pt; }
+  #printArea .ttd .garis { border-top:1px solid #333; margin-top:38px; padding-top:4px; }
+  #printArea .landscape table { font-size:8pt; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1><img id="hLogo" style="display:none;vertical-align:middle;margin-right:8px;height:44px" alt="logo">
+      <span id="hEmoji">📘</span> SEMAK
+      <span id="hSekolah" style="font-weight:normal;font-size:11pt;opacity:.9"></span></h1>
+  <select id="gPeperiksaan" onchange="tukarPeperiksaan()"></select>
+  <span class="chip" id="chipUser" style="display:none"></span>
+  <button id="btnLogin" onclick="bukaLogin()">🔐 Login</button>
+  <button id="btnLogout" onclick="logout()" style="display:none">Keluar</button>
+</div>
+
+<div class="tabs" id="tabs" style="display:none">
+  <div class="tab papar aktif" data-p="dash">📈 Dashboard</div>
+  <div class="tab" data-p="isi">📝 Isi Markah</div>
+  <div class="tab" data-p="statuspg">📊 Status Pengisian</div>
+  <div class="tab" data-p="cetak">🖨️ Cetak</div>
+  <div class="tab" data-p="tetguru">🧩 Tugasan Saya</div>
+  <div class="tab" data-p="tetapan">⚙️ Tetapan</div>
+</div>
+
+<div id="muat"><div class="spinner"></div>Memuat sistem...</div>
+
+<div class="kandungan" id="kandungan" style="display:none">
+
+  <!-- ═══ DASHBOARD (umum) ═══ -->
+  <div class="panel aktif" id="p-dash">
+    <div class="baris-pilih">
+      <button class="btn btn-kecil" onclick="muatDash()">🔄 Muat Semula Analisis</button>
+    </div>
+    <div id="dashIsi" style="display:none">
+      <div class="kad-grid" id="kadSekolah"></div>
+      <div class="kotak"><h3>GPMP Mengikut Kelas (rendah = baik)</h3><div class="carta"><canvas id="cGpmp"></canvas></div></div>
+      <div class="kotak"><h3>% Lulus Mengikut Kelas</h3><div class="carta"><canvas id="cLulus"></canvas></div></div>
+      <div class="kotak"><h3>Taburan Gred Keseluruhan</h3><div class="carta"><canvas id="cGred"></canvas></div></div>
+      <div class="kotak">
+        <h3>Analisis Kelas</h3>
+        <select id="dashKelas" onchange="paparDashKelas()"></select>
+        <div class="jadual-skrol" style="margin-top:10px"><table id="tDashSubjek"></table></div>
+        <h3 style="margin-top:18px">Markah Semua Subjek</h3>
+        <div class="jadual-skrol"><table id="tDashMarkah"></table></div>
+        <h3 style="margin-top:18px">Kedudukan Murid</h3>
+        <div class="jadual-skrol"><table id="tDashMurid"></table></div>
+      </div>
+    </div>
+    <div class="status" id="stDash"></div>
+  </div>
+
+  <!-- ═══ ISI MARKAH (guru/admin) ═══ -->
+  <div class="panel" id="p-isi">
+    <div class="kotak">
+      <div class="baris-pilih">
+        <select id="isiKelas" onchange="muatIsi()"><option value="">-- Pilih Kelas --</option></select>
+        <select id="isiSubjek"><option value="">-- Pilih Subjek --</option></select>
+        <span class="lencana-kunci" id="lencanaKunci" style="display:none">🔒 DIKUNCI</span>
+      </div>
+      <p id="isiPepAktif" style="font-size:9pt;color:#555;margin:0 0 10px"></p>
+      <div class="jadual-skrol"><table id="tIsi"></table></div>
+      <div style="margin-top:14px">
+        <button class="btn" id="btnSimpan" onclick="simpanMarkah()" style="display:none">💾 Simpan Markah</button>
+      </div>
+      <div class="status" id="stIsi"></div>
+      <p style="font-size:8.5pt;color:#888;margin-top:10px">
+        Markah: 0-100, atau taip <b>TH</b> (tidak hadir). Kosongkan jika belum ada markah.
+        TP Tahun 1-3 diisi manual; TP Tahun 4-6 dikira automatik.</p>
+    </div>
+  </div>
+
+  <!-- ═══ STATUS PENGISIAN ═══ -->
+  <div class="panel" id="p-statuspg">
+    <div class="kotak">
+      <h3>Status Pengisian — <span id="stTajuk"></span></h3>
+      <p style="font-size:8.5pt;color:#777;margin:0 0 10px">
+        <span class="st-penuh" style="padding:2px 8px">Lengkap</span>
+        <span class="st-separa" style="padding:2px 8px">Separa</span>
+        <span class="st-kosong" style="padding:2px 8px">Belum isi</span>
+        <span class="st-na" style="padding:2px 8px">Tiada subjek</span>
+        &nbsp; Nama guru bertugas dipapar dalam setiap petak.</p>
+      <div class="jadual-skrol"><table id="tStatus"></table></div>
+      <div style="margin-top:12px"><button class="btn btn-kecil" onclick="muatStatus()">🔄 Muat Semula</button></div>
+    </div>
+  </div>
+
+  <!-- ═══ CETAK ═══ -->
+  <div class="panel" id="p-cetak">
+    <div class="kotak">
+      <h3>Cetak Dokumen</h3>
+      <div class="baris-pilih">
+        <select id="cetakKelas" onchange="tukarKelasCetak()"><option value="">-- Pilih Kelas --</option></select>
+        <select id="cetakMurid" disabled><option value="">-- Pilih Murid --</option></select>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="cetakSlip()">🖨️ Semua Slip Keputusan</button>
+        <button class="btn" onclick="cetakSlipMurid()">🖨️ Slip Murid Dipilih</button>
+        <button class="btn" onclick="cetakMarkahKelas()">🖨️ Markah Semua Subjek</button>
+        <button class="btn" onclick="cetakLaporan()">🖨️ Laporan Analisis Kelas</button>
+      </div>
+      <div class="status" id="stCetak"></div>
+      <p style="font-size:8.5pt;color:#888;margin-top:10px">
+        Pilih "Save as PDF" dalam dialog cetak untuk simpan sebagai PDF.</p>
+    </div>
+  </div>
+
+  <!-- ═══ TUGASAN SAYA (guru sahaja) ═══ -->
+  <div class="panel" id="p-tetguru">
+    <div class="kotak">
+      <h3>🧩 Tugasan Saya — Subjek Yang Saya Ajar</h3>
+      <p style="font-size:9pt;color:#555;margin:0 0 10px">
+        Pilih kelas dan tandakan subjek yang anda ajar. Tugasan yang telah diisi admin
+        dipaparkan di sini secara automatik. Subjek yang dipegang guru lain dikunci.</p>
+      <div class="baris-pilih">
+        <select id="tgKelas" onchange="paparTetGuruKelas()"><option value="">-- Pilih Kelas --</option></select>
+      </div>
+      <div class="cek-grid" id="tgSubjekCek"></div>
+      <button class="btn btn-kecil" id="btnTgSimpan" onclick="simpanTetGuru()" style="display:none">💾 Simpan Tugasan Saya</button>
+      <div class="status" id="stTetGuru"></div>
+      <p style="font-weight:bold;margin:16px 0 6px">Ringkasan tugasan saya:</p>
+      <div id="tgRingkasan" style="font-size:9.5pt;color:#333"></div>
+    </div>
+  </div>
+
+  <!-- ═══ TETAPAN (admin sahaja) ═══ -->
+  <div class="panel" id="p-tetapan">
+
+    <div class="kotak">
+      <h3>🏫 Identiti Sekolah</h3>
+      <p style="font-weight:bold;margin:0 0 6px">Nama sekolah (dipapar di header &amp; semua cetakan):</p>
+      <div class="baris-pilih">
+        <input type="text" id="idSekolah" style="min-width:320px">
+        <button class="btn btn-kecil" onclick="simpanNamaSekolah()">💾 Simpan Nama</button>
+      </div>
+      <p style="font-weight:bold;margin:12px 0 6px">Logo sekolah (ganti 📘, dipapar di header &amp; slip keputusan):</p>
+      <div class="baris-pilih">
+        <img id="logoPreview" style="display:none;max-height:60px;border:1px solid #ddd;border-radius:6px;padding:3px" alt="logo semasa">
+        <input type="file" id="logoFail" accept="image/png,image/jpeg,image/gif,image/webp">
+        <button class="btn btn-kecil" onclick="uploadLogo()">📥 Muat Naik Logo</button>
+        <button class="btn btn-kecil btn-merah" id="btnPadamLogo" onclick="padamLogo()" style="display:none">Buang Logo</button>
+      </div>
+      <p style="font-size:8.5pt;color:#888;margin:4px 0 0">
+        Sebarang saiz imej diterima — sistem akan selaraskan secara automatik.
+        Logo disimpan dalam folder Drive "SEMAK - Sistem Markah".</p>
+      <div class="status" id="stIdentiti"></div>
+    </div>
+
+    <div class="kotak">
+      <h3>📋 Urus Peperiksaan</h3>
+      <div class="baris-pilih">
+        <select id="tetPep" onchange="muatTetapanPep()"></select>
+        <button class="btn btn-kecil" onclick="tambahPeperiksaan()">➕ Tambah Peperiksaan</button>
+        <button class="btn btn-kecil btn-merah" onclick="padamPep()">Padam Peperiksaan</button>
+      </div>
+      <div class="baris-pilih" style="margin-top:4px">
+        <label style="font-size:9.5pt;font-weight:bold">Aktif untuk pengisian:</label>
+        <select id="tetAktif" style="min-width:280px"></select>
+        <button class="btn btn-kecil" onclick="simpanPepAktif()">Tetapkan Aktif</button>
+      </div>
+      <div class="status" id="stAktif"></div>
+      <p style="font-size:9pt;color:#555;margin:10px 0">
+        Tandakan ✓ bagi mata pelajaran yang dibuka untuk setiap kelas. Petak kelabu tidak terpakai untuk kelas itu.</p>
+      <div class="jadual-skrol"><table id="tKonfigPep"></table></div>
+      <label style="display:inline-block;font-size:10pt;margin:12px 0"><input type="checkbox" id="tetKunci"> Kunci peperiksaan — tutup pengisian untuk semua pengguna</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-kecil" onclick="simpanPep()">💾 Simpan Peperiksaan</button>
+      </div>
+      <div class="status" id="stPep"></div>
+    </div>
+
+    <div class="kotak">
+      <h3>👩‍🏫 Tugasan Guru (siapa mengajar apa)</h3>
+      <p style="font-size:8.5pt;color:#777;margin:0 0 10px">
+        Pilih guru untuk setiap petak kelas × subjek. Guru hanya boleh mengisi markah
+        subjek yang ditugaskan kepadanya. Petak "—" bermaksud subjek tidak wujud untuk kelas itu.
+        Guru juga boleh mengisi tugasan sendiri melalui tab "🧩 Tugasan Saya" — ia
+        disegerakkan dengan jadual ini.</p>
+      <div class="baris-pilih">
+        <label style="font-size:9.5pt;font-weight:bold">Papar kelas:</label>
+        <select id="tugasanTapis" onchange="binaMatriksTugasan()"></select>
+      </div>
+      <div class="jadual-skrol"><table id="tTugasan"></table></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-kecil" onclick="simpanTugasan()">💾 Simpan Tugasan</button>
+      </div>
+      <div class="status" id="stTugasan"></div>
+    </div>
+
+    <div class="kotak">
+      <h3>📚 Mata Pelajaran &amp; Kelas</h3>
+      <p style="font-size:8.5pt;color:#777;margin:0 0 10px">
+        Subjek/kelas yang ditambah akan terus muncul dalam jadual peperiksaan,
+        tugasan guru dan status pengisian.</p>
+      <p style="font-weight:bold;margin:0 0 6px">Tambah mata pelajaran:</p>
+      <div class="baris-pilih">
+        <input type="text" id="mpNama" placeholder="Nama mata pelajaran (cth: B. CINA)" style="min-width:240px">
+        <select id="mpTahap">
+          <option value="">Semua tahun (1-6)</option>
+          <option value="1">Tahap 1 sahaja (Tahun 1-3)</option>
+          <option value="2">Tahap 2 sahaja (Tahun 4-6)</option>
+        </select>
+        <select id="mpSyarat">
+          <option value="">Semua murid</option>
+          <option value="ISLAM">Murid Islam sahaja</option>
+          <option value="BUKAN ISLAM">Murid bukan Islam sahaja</option>
+        </select>
+        <button class="btn btn-kecil" onclick="tambahSubjek()">➕ Tambah</button>
+      </div>
+      <p style="font-weight:bold;margin:12px 0 6px">Padam mata pelajaran:</p>
+      <div class="baris-pilih">
+        <select id="mpPadam"></select>
+        <button class="btn btn-kecil btn-merah" onclick="padamSubjek()">Padam</button>
+      </div>
+      <p style="font-weight:bold;margin:12px 0 6px">Tambah / padam kelas (manual):</p>
+      <div class="baris-pilih">
+        <input type="text" id="kelasBaru" placeholder="Cth: 4 CERDIK" style="min-width:200px">
+        <button class="btn btn-kecil" onclick="tambahKelas()">➕ Tambah</button>
+        <select id="kelasPadam" style="margin-left:14px"></select>
+        <button class="btn btn-kecil btn-merah" onclick="padamKelas()">Padam Kelas</button>
+      </div>
+      <p style="font-size:8.5pt;color:#888;margin:4px 0 0">
+        Kelas dari data murid wujud automatik. Hanya kelas manual tanpa murid boleh dipadam.
+        Padam subjek tidak memadam markah sedia ada dalam pangkalan data.</p>
+      <div class="status" id="stMPKelas"></div>
+    </div>
+
+    <div class="kotak">
+      <h3>🧑‍🏫 Senarai Guru</h3>
+      <div class="baris-pilih">
+        <label style="font-size:9.5pt;font-weight:bold">Pilih guru:</label>
+        <select id="guruPilih" onchange="paparGuruDipilih()" style="min-width:320px;max-width:100%"></select>
+      </div>
+      <div class="baris-pilih" style="margin-top:8px">
+        <input type="text" id="guruNamaEdit" placeholder="Nama guru" style="min-width:320px" disabled>
+        <button class="btn btn-kecil" id="btnKemaskiniGuru" onclick="kemaskiniGuruTerpilih()" disabled>✏️ Kemaskini</button>
+        <button class="btn btn-kecil btn-merah" id="btnPadamGuru" onclick="padamGuruTerpilih()" disabled>Padam</button>
+      </div>
+      <div class="baris-pilih" style="margin-top:8px">
+        <input type="text" id="guruBaru" placeholder="Nama guru baharu" style="min-width:260px">
+        <button class="btn btn-kecil" onclick="tambahGuru()">➕ Tambah Guru</button>
+        <button class="btn btn-kecil" onclick="simpanGuru()">💾 Simpan Senarai</button>
+      </div>
+      <div class="baris-pilih" style="margin-top:8px">
+        <input type="file" id="csvGuru" accept=".csv,text/csv">
+        <button class="btn btn-kecil" onclick="uploadGuruCSV()">📥 Muat Naik CSV Guru</button>
+      </div>
+      <p style="font-size:8.5pt;color:#888;margin:4px 0 0">
+        CSV guru: satu nama setiap baris (lajur pertama digunakan). Selepas muat naik,
+        semak melalui dropdown dan tekan Simpan Senarai.</p>
+      <div class="baris-pilih" style="margin-top:14px">
+        <label style="font-size:9.5pt;font-weight:bold">Nama Guru Besar:</label>
+        <select id="guruBesar" style="min-width:280px"></select>
+        <button class="btn btn-kecil" onclick="simpanGuruBesar()">Simpan</button>
+      </div>
+      <div class="status" id="stGuru"></div>
+    </div>
+
+    <div class="kotak">
+      <h3>📥 Muat Naik Data Murid (CSV iDMe/APDM)</h3>
+      <div class="baris-pilih">
+        <input type="file" id="csvMurid" accept=".csv,text/csv" onchange="bacaMuridCSV()">
+      </div>
+      <div id="petaMurid" style="display:none">
+        <p style="font-size:9pt;color:#555;margin:6px 0">
+          Padankan lajur CSV dengan medan sistem (diteka automatik — betulkan jika salah):</p>
+        <div class="baris-pilih">
+          <label style="font-size:9pt">Nama: <select id="mapNama"></select></label>
+          <label style="font-size:9pt">Jantina: <select id="mapJantina"></select></label>
+          <label style="font-size:9pt">Tahun: <select id="mapTahun"></select></label>
+          <label style="font-size:9pt">Kelas: <select id="mapKelas"></select></label>
+          <label style="font-size:9pt">Agama: <select id="mapAgama"></select></label>
+          <label style="font-size:9pt">No. KP: <select id="mapIC"></select></label>
+        </div>
+        <p id="previewMurid" style="font-size:9pt;color:#555"></p>
+        <button class="btn btn-kecil" onclick="uploadMuridCSV()">📤 Muat Naik &amp; Ganti Senarai Murid</button>
+      </div>
+      <p style="font-size:8.5pt;color:#888;margin:8px 0 0">
+        ⚠️ Senarai murid sedia ada akan DIGANTIKAN sepenuhnya. Markah TIDAK terjejas
+        (dipadankan semula melalui nama murid). Baris prasekolah dilangkau automatik.</p>
+      <div class="status" id="stMurid"></div>
+    </div>
+
+    <div class="kotak">
+      <h3>🛠️ Sistem</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn btn-kecil" onclick="adminSegerak()">🔄 Segerak Data Murid (Sheet1)</button>
+        <button class="btn btn-kecil" onclick="adminBackup()">🛡️ Backup Fail Sekarang</button>
+      </div>
+      <p style="font-weight:bold;margin:0 0 6px">Tukar kata laluan admin:</p>
+      <div class="baris-pilih">
+        <input type="password" id="klBaru" placeholder="Kata laluan baharu (min 4)">
+        <button class="btn btn-kecil" onclick="tukarKL()">Tukar</button>
+      </div>
+      <p style="font-weight:bold;margin:12px 0 6px">Tukar kata laluan guru:</p>
+      <div class="baris-pilih">
+        <select id="klGuruNama"></select>
+        <input type="password" id="klGuruBaru" placeholder="Kata laluan baharu (min 4)">
+        <button class="btn btn-kecil" onclick="tukarKLGuru()">Tukar</button>
+      </div>
+      <p style="font-size:8.5pt;color:#888;margin:4px 0 0">
+        Guru baharu diberi kata laluan lalai <b>guru</b> secara automatik.</p>
+      <div class="status" id="stSistem"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL LOGIN ═══ -->
+<div class="modal-latar" id="mLogin">
+  <div class="modal">
+    <div id="mPeranan">
+      <h3>🔐 Login Sebagai</h3>
+      <div class="pilih-peranan">
+        <button onclick="pilihPeranan('guru')">🧑‍🏫<br>Guru</button>
+        <button onclick="pilihPeranan('admin')">⚙️<br>Admin</button>
+      </div>
+    </div>
+    <div id="mGuru" style="display:none">
+      <h3>🧑‍🏫 Login Guru</h3>
+      <select id="mGuruNama"></select>
+      <input type="password" id="mGuruKata" placeholder="Kata laluan guru"
+             onkeydown="if(event.key==='Enter')loginGuru()">
+      <button class="btn" id="btnMasukGuru" onclick="loginGuru()">Masuk</button>
+    </div>
+    <div id="mAdmin" style="display:none">
+      <h3>⚙️ Login Admin</h3>
+      <input type="password" id="mAdminKata" placeholder="Kata laluan admin"
+             onkeydown="if(event.key==='Enter')loginAdmin()">
+      <button class="btn" id="btnMasukAdmin" onclick="loginAdmin()">Masuk</button>
+    </div>
+    <div class="status" id="stLogin"></div>
+    <button class="tutup" onclick="tutupLogin()">Batal</button>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+var INIT = null, KELAS_CACHE = {}, ANALISIS = null, charts = {};
+var GURU_SEMENTARA = [];
+var PERANAN = null, GURU_AKTIF = "", KATA = "";
+var WARNA = { A:"#43a047", B:"#7cb342", C:"#fdd835", D:"#fb8c00", E:"#f06292", F:"#e53935", TH:"#9e9e9e" };
+var KUNCI_SESI = "sms_sesi_v1";
+
+function simpanSesiPelayar() {
+  sessionStorage.setItem(KUNCI_SESI, JSON.stringify({ sesi: KATA }));
+}
+function buangSesiPelayar() { sessionStorage.removeItem(KUNCI_SESI); }
+function pulihSesiPelayar() {
+  var simpanan;
+  try { simpanan = JSON.parse(sessionStorage.getItem(KUNCI_SESI) || "null"); } catch (e) {}
+  if (!simpanan || !simpanan.sesi) return;
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r.ok) { buangSesiPelayar(); return; }
+    PERANAN = r.peranan; GURU_AKTIF = r.guru || ""; KATA = simpanan.sesi;
+    kemasKiniPeranan();
+  }).apiSemakSesi(simpanan.sesi);
+}
+
+google.script.run.withSuccessHandler(mula)
+  .withFailureHandler(function (e) {
+    document.getElementById("muat").innerHTML = "❌ Gagal memuat: " + e.message;
+  }).apiInit();
+
+function mula(d) {
+  INIT = d;
+  document.getElementById("hSekolah").textContent = d.sekolah;
+  paparLogoHeader();
+  isiDropdownPeperiksaan();
+  document.getElementById("muat").style.display = "none";
+  document.getElementById("tabs").style.display = "flex";
+  document.getElementById("kandungan").style.display = "block";
+
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.onclick = function () {
+      if (!t.classList.contains("papar")) return;
+      document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("aktif"); });
+      document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("aktif"); });
+      t.classList.add("aktif");
+      document.getElementById("p-" + t.dataset.p).classList.add("aktif");
+      if (t.dataset.p === "statuspg") muatStatus();
+      if (t.dataset.p === "tetapan") muatTetapan();
+      if (t.dataset.p === "tetguru") muatTetGuru();
+      if (t.dataset.p === "dash" && !ANALISIS) muatDash();
+    };
+  });
+  kemasKiniPeranan();
+  pulihSesiPelayar();
+  muatDash(); // analisis dimuat automatik semasa buka
+}
+
+function segarkanInit(cb) {
+  google.script.run.withSuccessHandler(function (d) {
+    INIT = d;
+    document.getElementById("hSekolah").textContent = d.sekolah;
+    paparLogoHeader();
+    isiDropdownPeperiksaan();
+    isiDropdownKelasIsi();
+    isiDropdownKelasCetak();
+    if (cb) cb();
+  }).apiInit();
+}
+
+// Logo di header — ikut saiz asal imej; jika tiada logo, papar 📘
+function paparLogoHeader() {
+  var img = document.getElementById("hLogo");
+  var emoji = document.getElementById("hEmoji");
+  if (INIT.logo) {
+    img.src = INIT.logo;
+    img.style.display = "inline-block";
+    emoji.style.display = "none";
+  } else {
+    img.style.display = "none";
+    emoji.style.display = "inline";
+  }
+}
+
+function isiDropdownPeperiksaan() {
+  var sel = document.getElementById("gPeperiksaan");
+  var semasa = sel.value;
+  var h = "";
+  INIT.peperiksaan.forEach(function (p) {
+    var pilih = semasa ? (p.nama === semasa) : (p.nama === INIT.aktif);
+    h += '<option value="' + p.nama + '"' + (pilih ? " selected" : "") + '>' +
+         p.nama + (p.kunci ? " 🔒" : "") + '</option>';
+  });
+  sel.innerHTML = h;
+}
+
+function peperiksaanAktif() { return document.getElementById("gPeperiksaan").value; }
+function configMengikutNama(nama) {
+  for (var i = 0; i < INIT.peperiksaan.length; i++)
+    if (INIT.peperiksaan[i].nama === nama) return INIT.peperiksaan[i];
+  return null;
+}
+// Digunakan untuk paparan dashboard, status dan cetakan.
+function configAktif() { return configMengikutNama(peperiksaanAktif()); }
+// Pengisian sentiasa menggunakan satu peperiksaan yang ditetapkan oleh admin.
+function peperiksaanIsi() { return INIT.aktif || ""; }
+function configIsi() { return configMengikutNama(peperiksaanIsi()); }
+function kelasSertai(cfg) { return (cfg && cfg.kelas) ? cfg.kelas : INIT.kelas; }
+function isTahap1JS(kelas) { return ["1","2","3"].indexOf(kelas.charAt(0)) > -1; }
+function subjekSertai(cfg, kelas) {
+  var semua = INIT.subjekSemua.map(function (s) { return s.n; });
+  if (!cfg || !kelas) return semua;
+  if (cfg.konfigurasi) return cfg.konfigurasi[kelas] || [];
+  var senarai = isTahap1JS(kelas) ? cfg.subjekT1 : cfg.subjekT2;
+  return senarai || semua;
+}
+
+function st(id, msg, jenis) {
+  var el = document.getElementById(id);
+  el.innerHTML = msg; el.className = "status " + jenis; el.style.display = "block";
+}
+function stTutup(id) { document.getElementById(id).style.display = "none"; }
+function fmt(v) { return (v === null || v === undefined || v === "") ? "-" : v; }
+function buatCarta(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+
+// ═══════════════ LOGIN ═══════════════
+function bukaLogin() {
+  document.getElementById("mLogin").style.display = "flex";
+  document.getElementById("mPeranan").style.display = "block";
+  document.getElementById("mGuru").style.display = "none";
+  document.getElementById("mAdmin").style.display = "none";
+  stTutup("stLogin");
+}
+function tutupLogin() { document.getElementById("mLogin").style.display = "none"; }
+
+function pilihPeranan(p) {
+  document.getElementById("mPeranan").style.display = "none";
+  if (p === "guru") {
+    if (!INIT.guru.length) {
+      document.getElementById("mPeranan").style.display = "block";
+      st("stLogin", "Tiada guru didaftarkan lagi. Minta admin daftar guru dahulu.", "err");
+      return;
+    }
+    var h = '<option value="">-- Pilih Nama Anda --</option>';
+    INIT.guru.forEach(function (g) { h += '<option value="' + g + '">' + g + '</option>'; });
+    document.getElementById("mGuruNama").innerHTML = h;
+    document.getElementById("mGuru").style.display = "block";
+  } else {
+    document.getElementById("mAdminKata").value = "";
+    document.getElementById("mAdmin").style.display = "block";
+  }
+}
+
+function loginGuru() {
+  var nama = document.getElementById("mGuruNama").value;
+  var kata = document.getElementById("mGuruKata").value;
+  if (!nama) { st("stLogin", "Sila pilih nama anda.", "err"); return; }
+  if (!kata) { st("stLogin", "Masukkan kata laluan.", "err"); return; }
+  var btn = document.getElementById("btnMasukGuru");
+  btn.disabled = true;
+  st("stLogin", "⏳ Menyemak...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    if (r.ok) {
+      PERANAN = "guru"; GURU_AKTIF = nama; KATA = r.sesi;
+      document.getElementById("mGuruKata").value = "";
+      simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan();
+    } else st("stLogin", "❌ Kata laluan salah.", "err");
+  }).withFailureHandler(function (e) {
+    btn.disabled = false;
+    st("stLogin", "❌ Ralat sambungan: " + e.message + " — cuba lagi.", "err");
+  }).apiLoginGuru(nama, kata);
+}
+
+function loginAdmin() {
+  var kata = document.getElementById("mAdminKata").value;
+  if (!kata) { st("stLogin", "Masukkan kata laluan.", "err"); return; }
+  var btn = document.getElementById("btnMasukAdmin");
+  btn.disabled = true;
+  st("stLogin", "⏳ Menyemak...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    if (r.ok) {
+      PERANAN = "admin"; KATA = r.sesi; GURU_AKTIF = "";
+      simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan();
+    } else st("stLogin", "❌ Kata laluan salah.", "err");
+  }).withFailureHandler(function (e) {
+    btn.disabled = false;
+    st("stLogin", "❌ Ralat sambungan: " + e.message + " — cuba lagi.", "err");
+  }).apiLoginAdmin(kata);
+}
+
+function logout() {
+  PERANAN = null; GURU_AKTIF = ""; KATA = "";
+  buangSesiPelayar();
+  kemasKiniPeranan();
+}
+
+function kemasKiniPeranan() {
+  var chip = document.getElementById("chipUser");
+  document.getElementById("btnLogin").style.display  = PERANAN ? "none" : "inline-block";
+  document.getElementById("btnLogout").style.display = PERANAN ? "inline-block" : "none";
+  chip.style.display = PERANAN ? "inline-block" : "none";
+  chip.textContent = PERANAN === "admin" ? "⚙️ ADMIN"
+                   : (PERANAN === "guru" ? "🧑‍🏫 " + GURU_AKTIF : "");
+
+  var papar = { dash: true, isi: false, statuspg: false, cetak: false,
+                tetguru: false, tetapan: false };
+  if (PERANAN === "guru")  { papar.isi = papar.statuspg = papar.cetak = papar.tetguru = true; }
+  if (PERANAN === "admin") { papar.isi = papar.statuspg = papar.cetak = papar.tetapan = true; }
+
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.classList.toggle("papar", !!papar[t.dataset.p]);
+  });
+
+  // Jika tab aktif kini tersembunyi, kembali ke Dashboard
+  var aktif = document.querySelector(".tab.aktif");
+  if (!aktif || !aktif.classList.contains("papar")) {
+    document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("aktif"); });
+    document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("aktif"); });
+    document.querySelector('.tab[data-p="dash"]').classList.add("aktif");
+    document.getElementById("p-dash").classList.add("aktif");
+  }
+
+  isiDropdownKelasIsi();
+  isiDropdownKelasCetak();
+}
+
+// Dropdown kelas Isi Markah — ditapis ikut peranan & konfigurasi peperiksaan
+function isiDropdownKelasIsi() {
+  var cfg = configIsi();
+  if (!peperiksaanIsi()) {
+    document.getElementById("isiPepAktif").textContent = "Tiada peperiksaan aktif. Pengisian markah sedang ditutup.";
+    document.getElementById("isiKelas").innerHTML = '<option value="">-- Tiada peperiksaan aktif --</option>';
+    document.getElementById("isiSubjek").innerHTML = '<option value="">-- Pilih Subjek --</option>';
+    document.getElementById("tIsi").innerHTML = "";
+    document.getElementById("btnSimpan").style.display = "none";
+    document.getElementById("lencanaKunci").style.display = "none";
+    if (PERANAN) st("stIsi", "Pengisian markah ditutup kerana tiada peperiksaan aktif.", "err");
+    return;
+  }
+  document.getElementById("isiPepAktif").textContent = "Peperiksaan aktif untuk pengisian: " + peperiksaanIsi() + (cfg && cfg.kunci ? " (DIKUNCI)" : "");
+  var senarai = kelasSertai(cfg).slice();
+  if (PERANAN === "guru") {
+    var kelasGuru = [];
+    INIT.tugasan.forEach(function (t) {
+      if (t.guru === GURU_AKTIF && kelasGuru.indexOf(t.kelas) === -1) kelasGuru.push(t.kelas);
+    });
+    senarai = senarai.filter(function (k) { return kelasGuru.indexOf(k) > -1; });
+  }
+  var h = '<option value="">-- Pilih Kelas --</option>';
+  senarai.forEach(function (k) { h += '<option value="' + k + '">' + k + '</option>'; });
+  document.getElementById("isiKelas").innerHTML = h;
+  document.getElementById("tIsi").innerHTML = "";
+  document.getElementById("btnSimpan").style.display = "none";
+
+  var cfg2 = configIsi();
+  document.getElementById("lencanaKunci").style.display =
+    (cfg2 && cfg2.kunci) ? "inline-block" : "none";
+}
+
+function isiDropdownKelasCetak() {
+  var cfg = configAktif();
+  var h = '<option value="">-- Pilih Kelas --</option>';
+  kelasSertai(cfg).forEach(function (k) { h += '<option value="' + k + '">' + k + '</option>'; });
+  document.getElementById("cetakKelas").innerHTML = h;
+}
+
+function tukarPeperiksaan() {
+  ANALISIS = null;
+  document.getElementById("dashIsi").style.display = "none";
+  isiDropdownKelasIsi();
+  isiDropdownKelasCetak();
+  muatDash(); // analisis dimuat semula automatik ikut peperiksaan dipilih
+}
+
+// ═══════════════ ISI MARKAH ═══════════════
+function kiraGredJS(v) {
+  if (v === "" || v === null) return "";
+  if (v === "TH" || Number(v) === 0) return "TH";
+  var m = Number(v); if (isNaN(m)) return "";
+  if (m >= 82) return "A"; if (m >= 66) return "B"; if (m >= 50) return "C";
+  if (m >= 35) return "D"; if (m >= 20) return "E"; return "F";
+}
+function kiraTPJS(v) {
+  if (v === "" || v === null) return "";
+  if (v === "TH" || Number(v) === 0) return "TH";
+  var m = Number(v); if (isNaN(m)) return "";
+  if (m >= 90) return 6; if (m >= 75) return 5; if (m >= 60) return 4;
+  if (m >= 45) return 3; if (m >= 30) return 2; return 1;
+}
+
+function muatIsi() {
+  if (!peperiksaanIsi()) return;
+  var kelas = document.getElementById("isiKelas").value;
+  document.getElementById("tIsi").innerHTML = "";
+  document.getElementById("btnSimpan").style.display = "none";
+  stTutup("stIsi");
+  if (!kelas) return;
+
+  if (KELAS_CACHE[kelas]) { isiSubjekDropdown(kelas); return; }
+  st("stIsi", "⏳ Memuat senarai murid...", "loading");
+  google.script.run.withSuccessHandler(function (d) {
+    KELAS_CACHE[kelas] = d;
+    stTutup("stIsi");
+    isiSubjekDropdown(kelas);
+  }).withFailureHandler(function (e) {
+    st("stIsi", "❌ " + e.message, "err");
+  }).apiKelas(kelas);
+}
+
+function isiSubjekDropdown(kelas) {
+  var d = KELAS_CACHE[kelas];
+  var cfg = configIsi();
+  var dibenark = subjekSertai(cfg, kelas);
+  var senarai = d.subjek.filter(function (s) { return dibenark.indexOf(s.n) > -1; });
+
+  if (PERANAN === "guru") {
+    var subjekGuru = [];
+    INIT.tugasan.forEach(function (t) {
+      if (t.guru === GURU_AKTIF && t.kelas === kelas) subjekGuru.push(t.subjek);
+    });
+    senarai = senarai.filter(function (s) { return subjekGuru.indexOf(s.n) > -1; });
+  }
+
+  var sel = document.getElementById("isiSubjek");
+  var semasa = sel.value;
+  var h = '<option value="">-- Pilih Subjek --</option>';
+  senarai.forEach(function (s) {
+    h += '<option value="' + s.n + '"' + (s.n === semasa ? " selected" : "") + '>' + s.n + '</option>';
+  });
+  sel.innerHTML = h;
+  // Selepas kelas dipilih, terus gunakan subjek pertama yang dibenarkan.
+  // Ini memastikan jadual dan senarai nama murid terus dipaparkan tanpa
+  // pengguna perlu memilih subjek sekali lagi.
+  if (!sel.value && senarai.length) sel.value = senarai[0].n;
+  if (!senarai.length) {
+    document.getElementById("tIsi").innerHTML = "";
+    document.getElementById("btnSimpan").style.display = "none";
+    if (PERANAN === "guru")
+      st("stIsi", "Anda tiada tugasan subjek untuk kelas ini. Hubungi admin.", "err");
+    else
+      st("stIsi", "⚠️ Tiada subjek ditetapkan untuk kelas '" + kelas +
+         "' dalam peperiksaan aktif. Buka Tetapan → Peperiksaan, tandakan subjek " +
+         "untuk kelas ini, kemudian Simpan Peperiksaan.", "err");
+    return;
+  }
+  if (sel.value) muatJadualIsi();
+}
+
+document.addEventListener("change", function (e) {
+  if (e.target.id === "isiSubjek" && e.target.value) muatJadualIsi();
+});
+
+function muatJadualIsi() {
+  var kelas = document.getElementById("isiKelas").value;
+  var subjek = document.getElementById("isiSubjek").value;
+  if (!kelas || !subjek) return;
+  st("stIsi", "⏳ Memuat markah sedia ada...", "loading");
+  google.script.run.withSuccessHandler(function (peta) {
+    stTutup("stIsi");
+    binaJadualIsi(kelas, subjek, peta);
+  }).withFailureHandler(function (e) {
+    st("stIsi", "❌ " + e.message, "err");
+  }).apiMarkah(peperiksaanIsi(), kelas);
+}
+
+function binaJadualIsi(kelas, subjek, peta) {
+  try {
+    var d = KELAS_CACHE[kelas];
+    // Tiada murid langsung dalam kelas ini — beri sebab yang jelas, jangan
+    // paparkan jadual kosong (tajuk sahaja) tanpa penjelasan.
+    if (!d || !d.murid || !d.murid.length) {
+      document.getElementById("tIsi").innerHTML = "";
+      document.getElementById("btnSimpan").style.display = "none";
+      st("stIsi", "⚠️ Tiada murid dalam kelas '" + kelas + "'. " +
+         "Kemungkinan: (1) data murid belum disegerak — jalankan menu 📘 SEMAK → " +
+         "🔄 Segerak Data Murid (dari Sheet1); atau (2) kelas ini ditanda dalam " +
+         "peperiksaan tetapi nama kelasnya tidak sepadan dengan senarai MURID.", "err");
+      return;
+    }
+    var tahap1 = d.tahap1;
+    var h = "<tr><th style='width:36px'>Bil</th><th>Nama Murid</th><th style='width:34px'>J</th>" +
+            "<th style='width:80px'>Markah</th><th style='width:56px'>Gred</th>" +
+            "<th style='width:80px'>TP" + (tahap1 ? " (manual)" : " (auto)") + "</th></tr>";
+
+    var bilBolehIsi = 0;
+    d.murid.forEach(function (m) {
+      var ambil = m.ambil[subjek];
+      var rec = (peta[m.ic] && peta[m.ic][subjek]) || { m: "", tp: "" };
+      if (ambil) bilBolehIsi++;
+      if (!ambil) {
+        h += "<tr><td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina +
+          "</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td></tr>";
+        return;
+      }
+      var gred = kiraGredJS(rec.m);
+      var tpVal = tahap1 ? rec.tp : (rec.tp !== "" ? rec.tp : kiraTPJS(rec.m));
+      h += "<tr data-nama='" + m.nama.replace(/'/g, "&#39;") + "' data-ic='" + (m.ic || "").toString().replace(/'/g, "&#39;") + "'>" +
+        "<td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina + "</td>" +
+        "<td><input class='markah inM' value='" + rec.m + "' oninput='kemasBaris(this)'></td>" +
+        "<td class='selGred g-" + gred + "'><span class='gred-sel'>" + (gred || "-") + "</span></td>" +
+        "<td>" + (tahap1
+          ? "<input class='markah inTP' value='" + (rec.tp === null ? "" : rec.tp) + "'>"
+          : "<span class='selTP'>" + (tpVal === "" ? "-" : tpVal) + "</span>") + "</td></tr>";
+    });
+
+    document.getElementById("tIsi").innerHTML = h;
+    var cfg = configIsi();
+    var kunci = cfg && cfg.kunci;
+    document.getElementById("btnSimpan").style.display =
+      (kunci || bilBolehIsi === 0) ? "none" : "inline-block";
+    if (kunci)
+      st("stIsi", "Peperiksaan ini telah dikunci — paparan sahaja untuk semua pengguna.", "err");
+    else if (bilBolehIsi === 0)
+      st("stIsi", "ℹ️ Tiada murid dalam kelas ini yang mengambil subjek '" + subjek +
+         "' (semua N/A). Semak syarat subjek (cth Islam/Bukan Islam) atau pilih subjek lain.", "err");
+  } catch (e) {
+    st("stIsi", "❌ Ralat membina jadual markah: " + (e.message || e), "err");
+  }
+}
+
+function kemasBaris(input) {
+  var tr = input.closest("tr");
+  var v = input.value.trim().toUpperCase();
+  if (v === "TH") input.value = "TH";
+  var sah = (v === "" || v === "TH" || (!isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 100));
+  input.classList.toggle("salah", !sah);
+  var gred = sah ? kiraGredJS(v === "" ? "" : (v === "TH" ? "TH" : Number(v))) : "";
+  var sel = tr.querySelector(".selGred");
+  sel.className = "selGred g-" + gred;
+  sel.innerHTML = "<span class='gred-sel'>" + (gred || "-") + "</span>";
+  var selTP = tr.querySelector(".selTP");
+  if (selTP) {
+    var tp = sah ? kiraTPJS(v === "" ? "" : (v === "TH" ? "TH" : Number(v))) : "";
+    selTP.textContent = (tp === "" ? "-" : tp);
+  }
+}
+
+function authSemasa() {
+  return { sesi: KATA };
+}
+
+function simpanMarkah() {
+  var kelas = document.getElementById("isiKelas").value;
+  var subjek = document.getElementById("isiSubjek").value;
+  if (!kelas || !subjek) return;
+  if (!PERANAN) { st("stIsi", "⚠️ Sila login dahulu.", "err"); return; }
+
+  var data = [];
+  var adaSalah = false;
+  document.querySelectorAll("#tIsi tr[data-nama]").forEach(function (tr) {
+    var inM = tr.querySelector(".inM");
+    var inTP = tr.querySelector(".inTP");
+    if (inM.classList.contains("salah")) adaSalah = true;
+    var v = inM.value.trim().toUpperCase();
+    var markah = (v === "") ? "" : (v === "TH" ? "TH" : Number(v));
+    var tp = inTP ? inTP.value.trim() : "";
+    if (tp !== "" && !isNaN(Number(tp))) tp = Number(tp);
+    data.push({ nama: tr.dataset.nama, ic: tr.dataset.ic, markah: markah, tp: tp });
+  });
+  if (adaSalah) { st("stIsi", "⚠️ Ada markah tidak sah (kotak merah). Betulkan dahulu.", "err"); return; }
+
+  var btn = document.getElementById("btnSimpan");
+  btn.disabled = true;
+  st("stIsi", "⏳ Menyimpan...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    st("stIsi", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    ANALISIS = null;
+  }).withFailureHandler(function (e) {
+    btn.disabled = false;
+    st("stIsi", "❌ " + e.message, "err");
+  }).apiSimpanMarkah(peperiksaanIsi(), kelas, subjek, data, authSemasa());
+}
+
+// ═══════════════ STATUS PENGISIAN ═══════════════
+function muatStatus() {
+  document.getElementById("stTajuk").textContent = peperiksaanAktif();
+  document.getElementById("tStatus").innerHTML =
+    "<tr><td style='padding:16px'>⏳ Memuat...</td></tr>";
+  google.script.run.withSuccessHandler(function (d) {
+    var h = "<tr><th class='kiri'>Kelas</th>";
+    d.semuaSubjek.forEach(function (s) { h += "<th>" + s + "</th>"; });
+    h += "</tr>";
+    d.kelas.forEach(function (k) {
+      h += "<tr><td class='kiri'><b>" + k.kelas + "</b></td>";
+      d.semuaSubjek.forEach(function (sn) {
+        var sub = null;
+        for (var i = 0; i < k.subjek.length; i++)
+          if (k.subjek[i].n === sn) { sub = k.subjek[i]; break; }
+        if (!sub || sub.patut === 0) { h += "<td class='st-na'>—</td>"; return; }
+        var cls = sub.ada === 0 ? "st-kosong" : (sub.ada >= sub.patut ? "st-penuh" : "st-separa");
+        h += "<td class='" + cls + "'>" + sub.ada + "/" + sub.patut +
+             (sub.guru ? "<span class='guru-kecil'>" + sub.guru + "</span>" : "") + "</td>";
+      });
+      h += "</tr>";
+    });
+    document.getElementById("tStatus").innerHTML = h;
+  }).withFailureHandler(function (e) {
+    document.getElementById("tStatus").innerHTML =
+      "<tr><td style='color:#c62828;padding:16px'>❌ " + e.message + "</td></tr>";
+  }).apiStatus(peperiksaanAktif());
+}
+
+// ═══════════════ DASHBOARD ═══════════════
+function muatDash() {
+  st("stDash", "⏳ Menjana analisis...", "loading");
+  google.script.run.withSuccessHandler(function (d) {
+    ANALISIS = d;
+    stTutup("stDash");
+    document.getElementById("dashIsi").style.display = "block";
+    paparDash();
+  }).withFailureHandler(function (e) {
+    st("stDash", "❌ " + e.message, "err");
+  }).apiAnalisis(peperiksaanAktif());
+}
+
+function paparDash() {
+  var d = ANALISIS;
+  var jM = 0, totGP = 0, totAmbil = 0, totLulus = 0, jA = 0, jTH = 0;
+  var gredTotal = { A:0,B:0,C:0,D:0,E:0,F:0 };
+  d.kelas.forEach(function (k) {
+    jM += k.ringkasan.jumlahMurid; jA += k.ringkasan.gredA; jTH += k.ringkasan.th;
+    k.subjek.forEach(function (s) {
+      totAmbil += s.ambil; totLulus += s.lulus;
+      if (s.gpmp !== null) totGP += s.gpmp * s.ambil;
+      ["A","B","C","D","E","F"].forEach(function (g) { gredTotal[g] += s[g]; });
+    });
+  });
+
+  document.getElementById("kadSekolah").innerHTML =
+    kad("MURID", jM) + kad("KELAS", d.kelas.length) +
+    kad("GPMP", totAmbil > 0 ? (totGP/totAmbil).toFixed(2) : "-") +
+    kad("% LULUS", totAmbil > 0 ? ((totLulus/totAmbil)*100).toFixed(1) + "%" : "-") +
+    kad("GRED A", jA) + kad("TH", jTH);
+
+  var labels = d.kelas.map(function (k) { return k.nama; });
+  buatCarta("cGpmp", { type:"bar", data:{ labels:labels, datasets:[{ label:"GPMP",
+    data:d.kelas.map(function(k){return k.ringkasan.gpmp;}), backgroundColor:"#3949ab" }]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, max:6 } } }});
+  buatCarta("cLulus", { type:"bar", data:{ labels:labels, datasets:[{ label:"% Lulus",
+    data:d.kelas.map(function(k){return k.ringkasan.pLulus;}), backgroundColor:"#43a047" }]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, max:100 } } }});
+  buatCarta("cGred", { type:"doughnut", data:{ labels:["A","B","C","D","E","F"],
+    datasets:[{ data:["A","B","C","D","E","F"].map(function(g){return gredTotal[g];}),
+    backgroundColor:["A","B","C","D","E","F"].map(function(g){return WARNA[g];}) }]},
+    options:{ responsive:true, maintainAspectRatio:false }});
+
+  var sK = "";
+  d.kelas.forEach(function (k) { sK += '<option value="' + k.nama + '">' + k.nama + '</option>'; });
+  document.getElementById("dashKelas").innerHTML = sK;
+  paparDashKelas();
+}
+
+function kad(l, v) { return '<div class="kad"><label>' + l + '</label><span>' + v + '</span></div>'; }
+
+function paparDashKelas() {
+  var nama = document.getElementById("dashKelas").value;
+  var k = ANALISIS.kelas.filter(function (x) { return x.nama === nama; })[0];
+  if (!k) return;
+
+  var h = "<tr><th>Subjek</th><th>Ambil</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>TH</th><th>Purata</th><th>% Lulus</th><th>GPMP</th></tr>";
+  k.subjek.forEach(function (s) {
+    h += "<tr><td class='kiri' style='background:" + s.warna + "'><b>" + s.subjek + "</b></td>" +
+      "<td>" + s.ambil + "</td><td>" + s.A + "</td><td>" + s.B + "</td><td>" + s.C +
+      "</td><td>" + s.D + "</td><td>" + s.E + "</td><td>" + s.F + "</td><td>" + s.th +
+      "</td><td>" + fmt(s.purata) + "</td><td>" + fmt(s.pLulus) + "</td><td>" + fmt(s.gpmp) + "</td></tr>";
+  });
+  document.getElementById("tDashSubjek").innerHTML = h;
+
+  // Markah semua subjek untuk setiap murid
+  h = "<tr><th rowspan='2' style='width:34px'>Bil</th><th rowspan='2'>Nama Murid</th>" +
+      "<th rowspan='2' style='width:30px'>J</th>";
+  k.subjek.forEach(function (s) {
+    h += "<th colspan='3' style='background:" + s.warna + ";color:#222'>" + s.subjek + "</th>";
+  });
+  h += "</tr><tr>";
+  k.subjek.forEach(function () { h += "<th>M</th><th>G</th><th>TP</th>"; });
+  h += "</tr>";
+  k.murid.forEach(function (m) {
+    h += "<tr><td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina + "</td>";
+    k.subjek.forEach(function (s) {
+      var r = null;
+      for (var i = 0; i < m.rekod.length; i++)
+        if (m.rekod[i].subjek === s.subjek) { r = m.rekod[i]; break; }
+      if (!r) {
+        h += "<td class='g-TH'>N/A</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td>";
+        return;
+      }
+      h += "<td>" + fmt(r.markah) + "</td>" +
+           "<td class='g-" + (r.gred || "") + "'>" + fmt(r.gred) + "</td>" +
+           "<td>" + fmt(r.tp) + "</td>";
+    });
+    h += "</tr>";
+  });
+  document.getElementById("tDashMarkah").innerHTML = h;
+
+  var susun = k.murid.slice().sort(function (a, b) {
+    if (a.rank === null) return 1; if (b.rank === null) return -1; return a.rank - b.rank;
+  });
+  h = "<tr><th>Ked.</th><th>Nama</th><th>J</th><th>Purata</th><th>GPMP</th><th>Lulus</th><th>Gred A</th><th>TH</th></tr>";
+  susun.forEach(function (m) {
+    h += "<tr><td><b>" + fmt(m.rank) + "</b></td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina +
+      "</td><td>" + fmt(m.purata) + "</td><td>" + fmt(m.gpmp) + "</td><td>" + m.lulus + "/" + m.ambil +
+      "</td><td>" + m.gredA + "</td><td>" + m.th + "</td></tr>";
+  });
+  document.getElementById("tDashMurid").innerHTML = h;
+}
+
+// ═══════════════ CETAK ═══════════════
+function pastikanAnalisis(cb) {
+  if (ANALISIS && ANALISIS.peperiksaan === peperiksaanAktif()) { cb(); return; }
+  st("stCetak", "⏳ Menjana data...", "loading");
+  google.script.run.withSuccessHandler(function (d) {
+    ANALISIS = d; stTutup("stCetak"); cb();
+  }).withFailureHandler(function (e) {
+    st("stCetak", "❌ " + e.message, "err");
+  }).apiAnalisis(peperiksaanAktif());
+}
+
+function tukarKelasCetak() {
+  var kelas = document.getElementById("cetakKelas").value;
+  var sel = document.getElementById("cetakMurid");
+  sel.innerHTML = '<option value="">-- Pilih Murid --</option>';
+  sel.disabled = true;
+  if (!kelas) return;
+  pastikanAnalisis(function () {
+    var k = ANALISIS.kelas.filter(function (x) { return x.nama === kelas; })[0];
+    if (!k) return;
+    var h = '<option value="">-- Pilih Murid --</option>';
+    k.murid.forEach(function (m) { h += '<option value="' + m.nama + '">' + m.nama + '</option>'; });
+    sel.innerHTML = h;
+    sel.disabled = false;
+  });
+}
+
+function cetakSlip(namaMurid) {
+  var kelas = document.getElementById("cetakKelas").value;
+  if (!kelas) { st("stCetak", "⚠️ Pilih kelas dahulu.", "err"); return; }
+  pastikanAnalisis(function () {
+    var k = ANALISIS.kelas.filter(function (x) { return x.nama === kelas; })[0];
+    if (!k) { st("stCetak", "❌ Tiada data untuk kelas ini.", "err"); return; }
+    var h = "";
+    var guruKelas = (INIT.guruKelas && INIT.guruKelas[kelas]) || "________________";
+    var guruBesar = INIT.guruBesar || "________________";
+    k.murid.filter(function (m) { return !namaMurid || m.nama === namaMurid; }).forEach(function (m) {
+      var baris = "";
+      m.rekod.forEach(function (r, i) {
+        baris += "<tr><td>" + (i+1) + "</td><td style='text-align:left'><b>" + r.subjek + "</b></td>" +
+          "<td>" + fmt(r.markah) + "</td><td class='g-" + (r.gred||"") + "'><b>" + fmt(r.gred) + "</b></td>" +
+          "<td>" + fmt(r.tp) + "</td></tr>";
+      });
+      var logoSlip = INIT.logo
+        ? '<img src="' + INIT.logo + '" style="height:38px;vertical-align:middle" alt="logo">'
+        : '';
+      h += '<div class="slip">' +
+        '<div class="hdr-cetak">' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:10px">' +
+        logoSlip +
+        '<div><h2>' + ANALISIS.sekolah + '</h2>' +
+        '<p>SLIP KEPUTUSAN ' + ANALISIS.peperiksaan + ' ' + ANALISIS.tahun + '</p></div>' +
+        '</div></div>' +
+        '<p><b>Nama:</b> ' + m.nama + ' &nbsp;|&nbsp; <b>Kelas:</b> ' + kelas +
+        ' &nbsp;|&nbsp; <b>Jantina:</b> ' + (m.jantina === "L" ? "LELAKI" : "PEREMPUAN") +
+        ' &nbsp;|&nbsp; <b>Kedudukan:</b> ' + fmt(m.rank) + '/' + k.ringkasan.jumlahMurid +
+        ' &nbsp;|&nbsp; <b>GPMP:</b> ' + fmt(m.gpmp) + '</p>' +
+        '<table><tr><th style="width:30px">Bil</th><th style="text-align:left">Subjek</th>' +
+        '<th style="width:60px">Markah</th><th style="width:50px">Gred</th><th style="width:44px">TP</th></tr>' +
+        baris + '</table>' +
+        '<div class="ttd-baris">' +
+        '<div class="ttd"><p>Disediakan oleh:</p><div class="garis">( ' + guruKelas + ' )<br>Guru Kelas</div></div>' +
+        '<div class="ttd"><p>Disahkan oleh:</p><div class="garis">( ' + guruBesar + ' )<br>Guru Besar</div></div>' +
+        '<div class="ttd"><p>Pengesahan Ibu Bapa:</p><div class="garis" style="height:24px"></div><div>Tarikh: ________</div></div>' +
+        '</div>' +
+        '<p style="font-size:7.5pt;color:#999;text-align:right;margin-top:8px">' +
+        'Dijana oleh SEMAK - Sistem Markah</p></div>';
+    });
+    document.getElementById("printArea").innerHTML = h;
+    window.print();
+  });
+}
+
+function cetakSlipMurid() {
+  var nama = document.getElementById("cetakMurid").value;
+  if (!nama) { st("stCetak", "Pilih seorang murid dahulu.", "err"); return; }
+  cetakSlip(nama);
+}
+
+function cetakMarkahKelas() {
+  var kelas = document.getElementById("cetakKelas").value;
+  if (!kelas) { st("stCetak", "Pilih kelas dahulu.", "err"); return; }
+  pastikanAnalisis(function () {
+    var k = ANALISIS.kelas.filter(function (x) { return x.nama === kelas; })[0];
+    if (!k) { st("stCetak", "Tiada data untuk kelas ini.", "err"); return; }
+    var h = '<style>@page { size: A4 landscape; margin: 10mm; }</style><div class="lap landscape"><div class="hdr-cetak"><h2>' + ANALISIS.sekolah + '</h2>' +
+      '<p>MARKAH SEMUA SUBJEK — KELAS ' + kelas + ' — ' + ANALISIS.peperiksaan + ' ' + ANALISIS.tahun + '</p></div>';
+    h += '<table><tr><th>Bil</th><th style="text-align:left">Nama Murid</th><th>J</th>';
+    k.subjek.forEach(function (s) { h += '<th>' + s.subjek + '</th>'; });
+    h += '</tr>';
+    k.murid.forEach(function (m) {
+      h += '<tr><td>' + m.bil + '</td><td style="text-align:left">' + m.nama + '</td><td>' + m.jantina + '</td>';
+      k.subjek.forEach(function (s) {
+        var rekod = null;
+        for (var i = 0; i < m.rekod.length; i++) if (m.rekod[i].subjek === s.subjek) { rekod = m.rekod[i]; break; }
+        h += '<td>' + (rekod ? fmt(rekod.markah) : 'N/A') + '</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</table><p style="font-size:8pt;color:#777;text-align:right;margin-top:10px">Dijana: ' + ANALISIS.dijana + '</p></div>';
+    document.getElementById("printArea").innerHTML = h;
+    window.print();
+  });
+}
+
+function cetakLaporan() {
+  var kelas = document.getElementById("cetakKelas").value;
+  if (!kelas) { st("stCetak", "⚠️ Pilih kelas dahulu.", "err"); return; }
+  pastikanAnalisis(function () {
+    var k = ANALISIS.kelas.filter(function (x) { return x.nama === kelas; })[0];
+    if (!k) { st("stCetak", "❌ Tiada data untuk kelas ini.", "err"); return; }
+
+    var bSubjek = "";
+    k.subjek.forEach(function (s) {
+      bSubjek += "<tr><td style='text-align:left'><b>" + s.subjek + "</b></td><td>" + s.ambil +
+        "</td><td>" + s.A + "</td><td>" + s.B + "</td><td>" + s.C + "</td><td>" + s.D +
+        "</td><td>" + s.E + "</td><td>" + s.F + "</td><td>" + s.th +
+        "</td><td>" + fmt(s.purata) + "</td><td>" + fmt(s.pLulus) + "</td><td>" + fmt(s.gpmp) + "</td></tr>";
+    });
+    var susun = k.murid.slice().sort(function (a, b) {
+      if (a.rank === null) return 1; if (b.rank === null) return -1; return a.rank - b.rank;
+    });
+    var bMurid = "";
+    susun.forEach(function (m) {
+      bMurid += "<tr><td>" + fmt(m.rank) + "</td><td style='text-align:left'>" + m.nama +
+        "</td><td>" + m.jantina + "</td><td>" + fmt(m.purata) + "</td><td>" + fmt(m.gpmp) +
+        "</td><td>" + m.lulus + "/" + m.ambil + "</td><td>" + m.gredA + "</td><td>" + m.th + "</td></tr>";
+    });
+
+    document.getElementById("printArea").innerHTML =
+      '<div class="lap">' +
+      '<div class="hdr-cetak"><h2>' + ANALISIS.sekolah + '</h2>' +
+      '<p>LAPORAN ANALISIS KELAS ' + kelas + ' — ' + ANALISIS.peperiksaan + ' ' + ANALISIS.tahun + '</p></div>' +
+      '<p><b>Jumlah murid:</b> ' + k.ringkasan.jumlahMurid +
+      ' (L: ' + k.ringkasan.lelaki + ', P: ' + k.ringkasan.perempuan + ')' +
+      ' &nbsp;|&nbsp; <b>GPMP kelas:</b> ' + fmt(k.ringkasan.gpmp) +
+      ' &nbsp;|&nbsp; <b>% lulus:</b> ' + fmt(k.ringkasan.pLulus) + '%</p>' +
+      '<h3>Analisis Subjek</h3>' +
+      '<table><tr><th style="text-align:left">Subjek</th><th>Ambil</th><th>A</th><th>B</th><th>C</th>' +
+      '<th>D</th><th>E</th><th>F</th><th>TH</th><th>Purata</th><th>% Lulus</th><th>GPMP</th></tr>' +
+      bSubjek + '</table>' +
+      '<h3 style="margin-top:16px">Kedudukan Murid</h3>' +
+      '<table><tr><th>Ked.</th><th style="text-align:left">Nama</th><th>J</th><th>Purata</th>' +
+      '<th>GPMP</th><th>Lulus</th><th>Gred A</th><th>TH</th></tr>' + bMurid + '</table>' +
+      '<p style="font-size:8pt;color:#777;text-align:right;margin-top:10px">Dijana: ' +
+      ANALISIS.dijana + '</p></div>';
+    window.print();
+  });
+}
+
+// ═══════════════ TUGASAN SAYA (GURU) ═══════════════
+function muatTetGuru() {
+  if (PERANAN !== "guru") return;
+  var sel = document.getElementById("tgKelas");
+  var semasa = sel.value;
+  var h = '<option value="">-- Pilih Kelas --</option>';
+  INIT.kelas.forEach(function (k) {
+    h += '<option value="' + k + '"' + (k === semasa ? " selected" : "") + '>' + k + '</option>';
+  });
+  sel.innerHTML = h;
+  paparTetGuruKelas();
+  paparRingkasanTugasan();
+}
+
+function paparTetGuruKelas() {
+  var kelas = document.getElementById("tgKelas").value;
+  var div = document.getElementById("tgSubjekCek");
+  var btn = document.getElementById("btnTgSimpan");
+  div.innerHTML = ""; btn.style.display = "none";
+  if (!kelas) return;
+
+  var info = INIT.kelasInfo[kelas] || { tahap1: isTahap1JS(kelas), adaMoral: true };
+  var h = "";
+  INIT.subjekSemua.forEach(function (s) {
+    var sah = !(s.tahap2Sahaja && info.tahap1) &&
+              !(s.tahap1Sahaja && !info.tahap1) &&
+              !(s.bukanIslamSahaja && !info.adaMoral);
+    if (!sah) return;
+
+    var pemegang = "";
+    INIT.tugasan.forEach(function (t) {
+      if (t.kelas === kelas && t.subjek === s.n) pemegang = t.guru;
+    });
+
+    if (pemegang && pemegang !== GURU_AKTIF) {
+      // Dipegang guru lain — dikunci
+      h += '<label style="opacity:.55;cursor:not-allowed">' +
+           '<input type="checkbox" disabled checked> ' + s.n +
+           '<span style="font-size:7.5pt;color:#c62828;display:block">' + pemegang + '</span></label>';
+    } else {
+      h += '<label><input type="checkbox" class="cekTgSubjek" value="' + s.n + '"' +
+           (pemegang === GURU_AKTIF ? " checked" : "") + '> ' + s.n + '</label>';
+    }
+  });
+  div.innerHTML = h;
+  btn.style.display = "inline-block";
+}
+
+function simpanTetGuru() {
+  var kelas = document.getElementById("tgKelas").value;
+  if (!kelas) return;
+  var senarai = [];
+  document.querySelectorAll(".cekTgSubjek:checked").forEach(function (c) {
+    senarai.push(c.value);
+  });
+  var btn = document.getElementById("btnTgSimpan");
+  btn.disabled = true;
+  st("stTetGuru", "⏳ Menyimpan...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    st("stTetGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetGuru);
+  }).withFailureHandler(function (e) {
+    btn.disabled = false;
+    st("stTetGuru", "❌ " + e.message, "err");
+  }).apiSimpanTugasanGuru(kelas, senarai, authSemasa());
+}
+
+function paparRingkasanTugasan() {
+  var div = document.getElementById("tgRingkasan");
+  var saya = INIT.tugasan.filter(function (t) { return t.guru === GURU_AKTIF; });
+  if (!saya.length) {
+    div.innerHTML = "<p style='color:#888'>Tiada tugasan lagi. Pilih kelas di atas dan tandakan subjek anda.</p>";
+    return;
+  }
+  var ikutKelas = {};
+  saya.forEach(function (t) {
+    if (!ikutKelas[t.kelas]) ikutKelas[t.kelas] = [];
+    ikutKelas[t.kelas].push(t.subjek);
+  });
+  var h = "";
+  Object.keys(ikutKelas).sort(function (a, b) {
+    return a.localeCompare(b, "ms", { numeric: true });
+  }).forEach(function (k) {
+    h += '<div style="margin:4px 0"><b>' + k + ':</b> ' + ikutKelas[k].join(", ") + '</div>';
+  });
+  div.innerHTML = h;
+}
+
+// ═══════════════ TETAPAN (ADMIN) ═══════════════
+function muatTetapan() {
+  if (PERANAN !== "admin") return;
+  // Identiti sekolah
+  document.getElementById("idSekolah").value = INIT.sekolah || "";
+  var lp = document.getElementById("logoPreview");
+  var bp = document.getElementById("btnPadamLogo");
+  if (INIT.logo) { lp.src = INIT.logo; lp.style.display = "inline-block"; bp.style.display = "inline-block"; }
+  else { lp.style.display = "none"; bp.style.display = "none"; }
+  // Dropdown peperiksaan
+  var h = "";
+  INIT.peperiksaan.forEach(function (p) {
+    h += '<option value="' + p.nama + '">' + p.nama + (p.kunci ? " 🔒" : "") + '</option>';
+  });
+  document.getElementById("tetPep").innerHTML = h;
+  var hAktif = '<option value="">-- Tiada peperiksaan aktif (tutup pengisian) --</option>';
+  INIT.peperiksaan.forEach(function (p) {
+    hAktif += '<option value="' + p.nama + '"' + (p.nama === INIT.aktif ? " selected" : "") + '>' + p.nama + '</option>';
+  });
+  document.getElementById("tetAktif").innerHTML = hAktif;
+  muatTetapanPep();
+  binaMatriksTugasan();
+  binaSenaraiGuru();
+  var hGB = '<option value="">-- Pilih Guru Besar --</option>';
+  INIT.guru.forEach(function (g) {
+    hGB += '<option value="' + g + '"' + (g === INIT.guruBesar ? " selected" : "") + '>' + g + '</option>';
+  });
+  document.getElementById("guruBesar").innerHTML = hGB;
+
+  // Dropdown guru untuk tukar kata laluan
+  var hG = '<option value="">-- Pilih Guru --</option>';
+  INIT.guru.forEach(function (g) { hG += '<option value="' + g + '">' + g + '</option>'; });
+  document.getElementById("klGuruNama").innerHTML = hG;
+
+  // Dropdown urus mata pelajaran & kelas
+  var hMP = "";
+  INIT.subjekSemua.forEach(function (s) { hMP += '<option value="' + s.n + '">' + s.n + '</option>'; });
+  document.getElementById("mpPadam").innerHTML = hMP;
+  var hKP = "";
+  INIT.kelas.forEach(function (k) {
+    var info = INIT.kelasInfo[k] || {};
+    if (!info.bilMurid) hKP += '<option value="' + k + '">' + k + '</option>'; // manual sahaja
+  });
+  document.getElementById("kelasPadam").innerHTML =
+    hKP || '<option value="">(tiada kelas manual)</option>';
+}
+
+// ── Identiti sekolah ──
+function simpanNamaSekolah() {
+  var nama = document.getElementById("idSekolah").value.trim();
+  if (!nama) { st("stIdentiti", "⚠️ Masukkan nama sekolah.", "err"); return; }
+  st("stIdentiti", "⏳ Menyimpan...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stIdentiti", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) { ANALISIS = null; segarkanInit(muatTetapan); }
+  }).withFailureHandler(function (e) {
+    st("stIdentiti", "❌ " + e.message, "err");
+  }).apiSimpanSekolah(nama, KATA);
+}
+
+function uploadLogo() {
+  var f = document.getElementById("logoFail").files[0];
+  if (!f) { st("stIdentiti", "⚠️ Pilih fail imej dahulu.", "err"); return; }
+  if (f.size > 15 * 1024 * 1024) {
+    st("stIdentiti", "⚠️ Fail terlalu besar (max 15MB).", "err"); return;
+  }
+  st("stIdentiti", "⏳ Menyelaraskan saiz imej...", "loading");
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      // Selaraskan automatik: tinggi maksimum 150px, nisbah dikekalkan
+      var TINGGI_MAX = 150;
+      var lebar = img.width, tinggi = img.height;
+      if (tinggi > TINGGI_MAX) {
+        lebar = Math.round(lebar * (TINGGI_MAX / tinggi));
+        tinggi = TINGGI_MAX;
+      }
+      var kanvas = document.createElement("canvas");
+      kanvas.width = lebar; kanvas.height = tinggi;
+      kanvas.getContext("2d").drawImage(img, 0, 0, lebar, tinggi);
+      var dataUrl = kanvas.toDataURL("image/png"); // PNG kekalkan latar lutsinar
+      var base64 = dataUrl.substring(dataUrl.indexOf(",") + 1);
+
+      st("stIdentiti", "⏳ Memuat naik logo...", "loading");
+      google.script.run.withSuccessHandler(function (r) {
+        st("stIdentiti", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+        if (r.ok) {
+          document.getElementById("logoFail").value = "";
+          segarkanInit(muatTetapan);
+        }
+      }).withFailureHandler(function (e) {
+        st("stIdentiti", "❌ " + e.message, "err");
+      }).apiSimpanLogo(base64, "image/png", KATA);
+    };
+    img.onerror = function () {
+      st("stIdentiti", "❌ Fail bukan imej yang sah.", "err");
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(f);
+}
+
+function padamLogo() {
+  if (!confirm("Buang logo? Paparan akan kembali ke 📘.")) return;
+  st("stIdentiti", "⏳ Membuang...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stIdentiti", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).apiPadamLogo(KATA);
+}
+
+// ── Urus mata pelajaran & kelas ──
+function tambahSubjek() {
+  var nama = document.getElementById("mpNama").value.trim();
+  if (!nama) { st("stMPKelas", "⚠️ Masukkan nama mata pelajaran.", "err"); return; }
+  var tahap = document.getElementById("mpTahap").value;
+  var syarat = document.getElementById("mpSyarat").value;
+  st("stMPKelas", "⏳ Menambah...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stMPKelas", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) { document.getElementById("mpNama").value = ""; KELAS_CACHE = {};
+                segarkanInit(muatTetapan); }
+  }).withFailureHandler(function (e) {
+    st("stMPKelas", "❌ " + e.message, "err");
+  }).apiTambahSubjek(nama, tahap, syarat, KATA);
+}
+
+function padamSubjek() {
+  var nama = document.getElementById("mpPadam").value;
+  if (!nama) return;
+  if (!confirm("Padam mata pelajaran '" + nama + "' dari senarai?\n\n" +
+      "Ia akan hilang dari semua jadual, tetapi markah sedia ada TIDAK dipadam.")) return;
+  st("stMPKelas", "⏳ Memadam...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stMPKelas", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) { KELAS_CACHE = {}; segarkanInit(muatTetapan); }
+  }).apiPadamSubjek(nama, KATA);
+}
+
+function tambahKelas() {
+  var nama = document.getElementById("kelasBaru").value.trim().toUpperCase();
+  if (!nama) { st("stMPKelas", "⚠️ Masukkan nama kelas (cth: 4 CERDIK).", "err"); return; }
+  st("stMPKelas", "⏳ Menambah...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stMPKelas", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) { document.getElementById("kelasBaru").value = "";
+                segarkanInit(muatTetapan); }
+  }).withFailureHandler(function (e) {
+    st("stMPKelas", "❌ " + e.message, "err");
+  }).apiTambahKelas(nama, KATA);
+}
+
+function padamKelas() {
+  var nama = document.getElementById("kelasPadam").value;
+  if (!nama) return;
+  if (!confirm("Padam kelas '" + nama + "'?")) return;
+  st("stMPKelas", "⏳ Memadam...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stMPKelas", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).apiPadamKelas(nama, KATA);
+}
+
+function muatTetapanPep() {
+  var nama = document.getElementById("tetPep").value;
+  var cfg = null;
+  INIT.peperiksaan.forEach(function (p) { if (p.nama === nama) cfg = p; });
+  document.getElementById("tetKunci").checked = cfg ? cfg.kunci : false;
+  binaMatriksPeperiksaan(cfg);
+}
+
+function simpanPep() {
+  var nama = document.getElementById("tetPep").value;
+  if (!nama) { st("stPep", "Pilih peperiksaan dahulu.", "err"); return; }
+  var konfigurasi = [];
+  document.querySelectorAll("#tKonfigPep input.cek-peperiksaan:checked").forEach(function (f) {
+    konfigurasi.push({ kelas: f.dataset.kelas, subjek: f.dataset.subjek });
+  });
+  var kunci = document.getElementById("tetKunci").checked;
+  st("stPep", "⏳ Menyimpan...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stPep", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).withFailureHandler(function (e) {
+    st("stPep", "❌ " + e.message, "err");
+  }).apiSimpanPeperiksaan(nama, konfigurasi, kunci, KATA);
+}
+
+function escTeks(v) {
+  return String(v || "").replace(/[&<>\"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c];
+  });
+}
+
+function binaMatriksPeperiksaan(cfg) {
+  var peta = (cfg && cfg.konfigurasi) || {};
+  var h = "<thead><tr><th>Kelas / Mata Pelajaran</th>";
+  INIT.subjekSemua.forEach(function (s) { h += "<th>" + escTeks(s.n) + "</th>"; });
+  h += "</tr></thead><tbody>";
+  INIT.kelas.forEach(function (kelas) {
+    var info = INIT.kelasInfo[kelas] || {};
+    var dipilih = peta[kelas] || [];
+    h += "<tr><td><b>" + escTeks(kelas) + "</b><br><button type=\"button\" class=\"btn btn-kecil\" onclick=\"pilihSemuaSubjekPep('" + encodeURIComponent(kelas) + "')\">Pilih semua</button></td>";
+    INIT.subjekSemua.forEach(function (s) {
+      var sah = !(s.tahap2Sahaja && info.tahap1) && !(s.tahap1Sahaja && !info.tahap1) && !(s.bukanIslamSahaja && !info.adaMoral);
+      if (!sah) { h += "<td>—</td>"; return; }
+      var semak = dipilih.indexOf(s.n) > -1 ? " checked" : "";
+      h += "<td><input class=\"cek-peperiksaan\" type=\"checkbox\" data-kelas=\"" + escTeks(kelas) + "\" data-subjek=\"" + escTeks(s.n) + "\"" + semak + "></td>";
+    });
+    h += "</tr>";
+  });
+  document.getElementById("tKonfigPep").innerHTML = h + "</tbody>";
+}
+
+function pilihSemuaSubjekPep(kelas) {
+  kelas = decodeURIComponent(kelas);
+  document.querySelectorAll("#tKonfigPep input.cek-peperiksaan[data-kelas]").forEach(function (f) {
+    if (f.dataset.kelas === kelas) f.checked = true;
+  });
+}
+
+function tambahPeperiksaan() {
+  var nama = prompt("Masukkan nama peperiksaan baharu:");
+  if (!nama) return;
+  st("stPep", "⏳ Menambah peperiksaan...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stPep", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(function () { document.getElementById("tetPep").value = r.nama; muatTetapanPep(); });
+  }).withFailureHandler(function (e) { st("stPep", "❌ " + e.message, "err");
+  }).apiTambahPeperiksaan(nama, KATA);
+}
+
+function simpanPepAktif() {
+  var nama = document.getElementById("tetAktif").value;
+  google.script.run.withSuccessHandler(function (r) {
+    st("stAktif", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).apiTetapkanAktif(nama, KATA);
+}
+
+function padamPep() {
+  var nama = document.getElementById("tetPep").value;
+  if (!nama) return;
+  if (!confirm("Padam peperiksaan '" + nama + "' dan semua markahnya? Tindakan ini tidak boleh dibatalkan.")) return;
+  var backupDulu = confirm("Buat backup penuh sebelum memadam?\n\nOK = ya, backup dulu.\nBatal = teruskan tanpa backup.");
+  st("stPep", "⏳ Memadam...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stPep", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).withFailureHandler(function (e) {
+    st("stPep", "❌ " + e.message, "err");
+  }).apiPadamPeperiksaan(nama, backupDulu, KATA);
+}
+
+function binaMatriksTugasan() {
+  var tapis = document.getElementById("tugasanTapis");
+  if (!tapis.options.length) {
+    tapis.innerHTML = '<option value="">Semua kelas</option>' + INIT.kelas.map(function (k) { return '<option value="' + escTeks(k) + '">' + escTeks(k) + '</option>'; }).join("");
+  }
+  var kelasPaparan = tapis.value ? [tapis.value] : INIT.kelas;
+  var h = "<thead><tr><th>Kelas / Subjek</th><th>Guru Kelas</th>" + INIT.subjekSemua.map(function (s) { return "<th>" + escTeks(s.n) + "</th>"; }).join("") + "</tr></thead><tbody>";
+  kelasPaparan.forEach(function (kelas) {
+    var info = INIT.kelasInfo[kelas] || {};
+    h += "<tr><td><b>" + escTeks(kelas) + "</b></td><td><select class=\"guru-kelas\" data-kelas=\"" + escTeks(kelas) + "\"><option value=\"\">-- pilih --</option>" + INIT.guru.map(function (g) { return '<option value="' + escTeks(g) + '"' + (((INIT.guruKelas || {})[kelas] === g) ? " selected" : "") + ">" + escTeks(g) + "</option>"; }).join("") + "</select></td>";
+    INIT.subjekSemua.forEach(function (s) {
+      var sah = !(s.tahap2Sahaja && info.tahap1) && !(s.tahap1Sahaja && !info.tahap1) && !(s.bukanIslamSahaja && !info.adaMoral);
+      if (!sah) { h += "<td>—</td>"; return; }
+      var t = INIT.tugasan.filter(function (x) { return x.kelas === kelas && x.subjek === s.n; })[0];
+      h += "<td><select class=\"guru-tugas\" data-kelas=\"" + escTeks(kelas) + "\" data-subjek=\"" + escTeks(s.n) + "\"><option value=\"\">--</option>" + INIT.guru.map(function (g) { return '<option value="' + escTeks(g) + '"' + (t && t.guru === g ? " selected" : "") + ">" + escTeks(g) + "</option>"; }).join("") + "</select></td>";
+    });
+    h += "</tr>";
+  });
+  document.getElementById("tTugasan").innerHTML = h + "</tbody>";
+}
+
+function simpanTugasan() {
+  var tugasan = [], guruKelas = [], kelasTerlibat = [];
+  document.querySelectorAll("#tTugasan .guru-tugas").forEach(function (s) {
+    if (s.value) tugasan.push({ kelas: s.dataset.kelas, subjek: s.dataset.subjek, guru: s.value });
+    if (kelasTerlibat.indexOf(s.dataset.kelas) < 0) kelasTerlibat.push(s.dataset.kelas);
+  });
+  document.querySelectorAll("#tTugasan .guru-kelas").forEach(function (s) {
+    guruKelas.push({ kelas: s.dataset.kelas, guru: s.value });
+    if (kelasTerlibat.indexOf(s.dataset.kelas) < 0) kelasTerlibat.push(s.dataset.kelas);
+  });
+  st("stTugasan", "⏳ Menyimpan...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stTugasan", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).withFailureHandler(function (e) {
+    st("stTugasan", "❌ " + e.message, "err");
+  }).apiSimpanTugasan(tugasan, guruKelas, kelasTerlibat, KATA);
+}
+
+// ── Senarai guru ──
+function binaSenaraiGuru(pilihan) {
+  GURU_SEMENTARA = INIT.guru.slice();
+  lukisDropdownGuru(pilihan || "");
+}
+function lukisDropdownGuru(pilihan) {
+  var sel = document.getElementById("guruPilih");
+  var h = '<option value="">-- Pilih Guru --</option>';
+  GURU_SEMENTARA.forEach(function (g) { h += '<option value="' + escTeks(g) + '"' + (g === pilihan ? " selected" : "") + '>' + escTeks(g) + '</option>'; });
+  sel.innerHTML = h;
+  paparGuruDipilih();
+}
+function paparGuruDipilih() {
+  var nama = document.getElementById("guruPilih").value;
+  var input = document.getElementById("guruNamaEdit");
+  input.value = nama;
+  input.disabled = !nama;
+  document.getElementById("btnKemaskiniGuru").disabled = !nama;
+  document.getElementById("btnPadamGuru").disabled = !nama;
+}
+function tambahGuru() {
+  var e = document.getElementById("guruBaru"), n = e.value.trim();
+  if (!n) { st("stGuru", "Sila masukkan nama guru.", "err"); return; }
+  if (GURU_SEMENTARA.indexOf(n) > -1) { st("stGuru", "Nama guru ini sudah ada dalam senarai.", "err"); return; }
+  GURU_SEMENTARA.push(n); e.value = ""; lukisDropdownGuru(n);
+  st("stGuru", "✅ Guru telah ditambah. Tekan Simpan Senarai untuk simpan kekal.", "ok");
+}
+function kemaskiniGuruTerpilih() {
+  var lama = document.getElementById("guruPilih").value, baru = document.getElementById("guruNamaEdit").value.trim();
+  if (!lama || !baru) return;
+  if (lama !== baru && GURU_SEMENTARA.indexOf(baru) > -1) { st("stGuru", "Nama guru ini sudah ada dalam senarai.", "err"); return; }
+  GURU_SEMENTARA[GURU_SEMENTARA.indexOf(lama)] = baru; lukisDropdownGuru(baru);
+  st("stGuru", "✅ Nama guru dikemaskini. Tekan Simpan Senarai untuk simpan kekal.", "ok");
+}
+function padamGuruTerpilih() {
+  var nama = document.getElementById("guruPilih").value;
+  if (!nama || !confirm('Padam "' + nama + '" daripada senarai guru?')) return;
+  GURU_SEMENTARA.splice(GURU_SEMENTARA.indexOf(nama), 1); lukisDropdownGuru("");
+  st("stGuru", "✅ Guru telah dibuang. Tekan Simpan Senarai untuk simpan kekal.", "ok");
+}
+function simpanGuru() {
+  var g = GURU_SEMENTARA.slice();
+  google.script.run.withSuccessHandler(function (r) {
+    st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).withFailureHandler(function (e) {
+    st("stGuru", "❌ " + e.message, "err");
+  }).apiSimpanGuru(g, document.getElementById("guruBesar").value, KATA);
+}
+function uploadGuruCSV() {
+  var fail = document.getElementById("csvGuru").files[0];
+  if (!fail) { st("stGuru", "Sila pilih fail CSV terlebih dahulu.", "err"); return; }
+  var baca = new FileReader();
+  baca.onload = function () {
+    var tambah = baca.result.split(/\r?\n/).map(function (b) { return b.split(",")[0].trim(); }).filter(Boolean);
+    tambah.forEach(function (n) { if (GURU_SEMENTARA.indexOf(n) === -1) GURU_SEMENTARA.push(n); });
+    lukisDropdownGuru(""); st("stGuru", "✅ Senarai daripada CSV dimuatkan. Tekan Simpan Senarai untuk simpan kekal.", "ok");
+  };
+  baca.readAsText(fail);
+}
+function simpanGuruBesar() {
+  google.script.run.withSuccessHandler(function (r) {
+    st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) segarkanInit(muatTetapan);
+  }).apiSimpanGuruBesar(document.getElementById("guruBesar").value, KATA);
+}
+
+// ═══════════════ MUAT NAIK CSV MURID ═══════════════
+var CSV_MURID_BARIS = null, CSV_MURID_HEADER = null;
+
+// Pembaca CSV ringkas yang menyokong medan berpetik (cth alamat mengandungi koma)
+function pecahBarisCSV(baris) {
+  var hasil = [], semasa = "", dlmPetik = false;
+  for (var i = 0; i < baris.length; i++) {
+    var c = baris.charAt(i);
+    if (c === '"') {
+      if (dlmPetik && baris.charAt(i + 1) === '"') { semasa += '"'; i++; }
+      else dlmPetik = !dlmPetik;
+    } else if (c === "," && !dlmPetik) { hasil.push(semasa); semasa = ""; }
+    else semasa += c;
+  }
+  hasil.push(semasa);
+  return hasil.map(function (v) { return v.trim(); });
+}
+
+function tekaLajur(header, kunci) {
+  for (var i = 0; i < header.length; i++) {
+    var h = header[i].toUpperCase();
+    for (var j = 0; j < kunci.length; j++) if (h.indexOf(kunci[j]) > -1) return i;
+  }
+  return -1;
+}
+
+function bacaMuridCSV() {
+  var fail = document.getElementById("csvMurid").files[0];
+  if (!fail) return;
+  var baca = new FileReader();
+  baca.onload = function () {
+    var baris = baca.result.split(/\r?\n/).filter(function (b) { return b.trim() !== ""; });
+    // Cari baris header: baris pertama yang mengandungi perkataan "NAMA"
+    var idxHeader = 0;
+    for (var i = 0; i < Math.min(baris.length, 12); i++) {
+      if (baris[i].toUpperCase().indexOf("NAMA") > -1) { idxHeader = i; break; }
+    }
+    CSV_MURID_HEADER = pecahBarisCSV(baris[idxHeader]);
+    CSV_MURID_BARIS = baris.slice(idxHeader + 1).map(pecahBarisCSV);
+
+    var medan = {
+      mapNama:    ["NAMA MURID", "NAMA"],
+      mapJantina: ["JANTINA"],
+      mapTahun:   ["TAHUN", "TINGKATAN"],
+      mapKelas:   ["NAMA KELAS", "KELAS"],
+      mapAgama:   ["AGAMA"],
+      mapIC:      ["NO. PENGENALAN", "PENGENALAN", "KP", "MYKAD", "IC"]
+    };
+    Object.keys(medan).forEach(function (id) {
+      var sel = document.getElementById(id);
+      var teka = tekaLajur(CSV_MURID_HEADER, medan[id]);
+      sel.innerHTML = '<option value="-1">-- tiada --</option>' +
+        CSV_MURID_HEADER.map(function (h, i) {
+          return '<option value="' + i + '"' + (i === teka ? " selected" : "") + '>' +
+                 escTeks(h || ("Lajur " + (i + 1))) + '</option>';
+        }).join("");
+    });
+
+    document.getElementById("petaMurid").style.display = "block";
+    document.getElementById("previewMurid").textContent =
+      CSV_MURID_BARIS.length + " baris data dibaca daripada CSV (header: baris " + (idxHeader + 1) + ").";
+    stTutup("stMurid");
+  };
+  baca.readAsText(fail);
+}
+
+function uploadMuridCSV() {
+  if (!CSV_MURID_BARIS || !CSV_MURID_BARIS.length) {
+    st("stMurid", "⚠️ Pilih dan baca fail CSV dahulu.", "err"); return;
+  }
+  var idx = {};
+  ["Nama", "Jantina", "Tahun", "Kelas", "Agama", "IC"].forEach(function (k) {
+    idx[k.toLowerCase()] = parseInt(document.getElementById("map" + k).value, 10);
+  });
+  if (idx.nama < 0) { st("stMurid", "⚠️ Lajur Nama wajib dipilih.", "err"); return; }
+
+  var ambil = function (baris, i) { return (i >= 0 && i < baris.length) ? baris[i] : ""; };
+  var senarai = CSV_MURID_BARIS.map(function (b) {
+    return {
+      nama:    ambil(b, idx.nama),
+      jantina: ambil(b, idx.jantina),
+      tahun:   ambil(b, idx.tahun),
+      kelas:   ambil(b, idx.kelas),
+      agama:   ambil(b, idx.agama),
+      ic:      ambil(b, idx.ic)
+    };
+  }).filter(function (m) { return m.nama; });
+
+  if (!confirm(senarai.length + " baris akan menggantikan SEPENUHNYA senarai murid sedia ada.\n\nTeruskan?")) return;
+
+  st("stMurid", "⏳ Memuat naik...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stMurid", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) {
+      document.getElementById("csvMurid").value = "";
+      document.getElementById("petaMurid").style.display = "none";
+      CSV_MURID_BARIS = null;
+      KELAS_CACHE = {}; ANALISIS = null;
+      segarkanInit(muatTetapan);
+    }
+  }).withFailureHandler(function (e) {
+    st("stMurid", "❌ " + e.message, "err");
+  }).apiUploadMurid(senarai, KATA);
+}
+
+// ═══════════════ SISTEM ═══════════════
+function adminSegerak() {
+  st("stSistem", "⏳ Menyegerak data murid...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) { KELAS_CACHE = {}; ANALISIS = null; segarkanInit(muatTetapan); }
+  }).withFailureHandler(function (e) {
+    st("stSistem", "❌ " + e.message, "err");
+  }).apiSegerakMuridAdmin(KATA);
+}
+
+function adminBackup() {
+  st("stSistem", "⏳ Membuat backup...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+  }).withFailureHandler(function (e) {
+    st("stSistem", "❌ " + e.message, "err");
+  }).apiBackupAdmin(KATA);
+}
+
+function tukarKL() {
+  var baru = document.getElementById("klBaru").value.trim();
+  if (baru.length < 4) { st("stSistem", "⚠️ Kata laluan mesti sekurang-kurangnya 4 aksara.", "err"); return; }
+  st("stSistem", "⏳ Menukar...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) document.getElementById("klBaru").value = "";
+  }).withFailureHandler(function (e) {
+    st("stSistem", "❌ " + e.message, "err");
+  }).apiTukarKataLaluan(baru, KATA);
+}
+
+function tukarKLGuru() {
+  var nama = document.getElementById("klGuruNama").value;
+  var baru = document.getElementById("klGuruBaru").value.trim();
+  if (!nama) { st("stSistem", "⚠️ Pilih guru dahulu.", "err"); return; }
+  if (baru.length < 4) { st("stSistem", "⚠️ Kata laluan mesti sekurang-kurangnya 4 aksara.", "err"); return; }
+  st("stSistem", "⏳ Menukar...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    if (r.ok) document.getElementById("klGuruBaru").value = "";
+  }).withFailureHandler(function (e) {
+    st("stSistem", "❌ " + e.message, "err");
+  }).apiSetKataGuru(nama, baru, KATA);
+}
+</script>
+</body>
+</html>
