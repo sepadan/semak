@@ -788,11 +788,16 @@ function configMengikutNama(nama) {
     if (INIT.peperiksaan[i].nama === nama) return INIT.peperiksaan[i];
   return null;
 }
-// Digunakan untuk paparan dashboard, status dan cetakan.
+// Nilai dropdown di header ialah peperiksaan yang sedang dilihat pada semua paparan.
 function configAktif() { return configMengikutNama(peperiksaanAktif()); }
-// Pengisian sentiasa menggunakan satu peperiksaan yang ditetapkan oleh admin.
-function peperiksaanIsi() { return INIT.aktif || ""; }
+// Isi Markah turut mengikut pilihan dropdown. INIT.aktif hanya mengawal hak menyimpan.
+function peperiksaanIsi() { return peperiksaanAktif(); }
 function configIsi() { return configMengikutNama(peperiksaanIsi()); }
+function bolehSimpanPeperiksaanIsi() {
+  var nama = peperiksaanIsi();
+  var cfg = configIsi();
+  return !!nama && nama === (INIT.aktif || "") && !(cfg && cfg.kunci);
+}
 function kelasSertai(cfg) { return (cfg && cfg.kelas) ? cfg.kelas : INIT.kelas; }
 function isTahap1JS(kelas) { return ["1","2","3"].indexOf(kelas.charAt(0)) > -1; }
 function subjekSertai(cfg, kelas) {
@@ -921,16 +926,22 @@ function kemasKiniPeranan() {
 function isiDropdownKelasIsi() {
   var cfg = configIsi();
   if (!peperiksaanIsi()) {
-    document.getElementById("isiPepAktif").textContent = "Tiada peperiksaan aktif. Pengisian markah sedang ditutup.";
-    document.getElementById("isiKelas").innerHTML = '<option value="">-- Tiada peperiksaan aktif --</option>';
+    document.getElementById("isiPepAktif").textContent = "Tiada peperiksaan dipilih.";
+    document.getElementById("isiKelas").innerHTML = '<option value="">-- Tiada peperiksaan --</option>';
     document.getElementById("isiSubjek").innerHTML = '<option value="">-- Pilih Subjek --</option>';
     document.getElementById("tIsi").innerHTML = "";
     document.getElementById("btnSimpan").style.display = "none";
     document.getElementById("lencanaKunci").style.display = "none";
-    if (PERANAN) st("stIsi", "Pengisian markah ditutup kerana tiada peperiksaan aktif.", "err");
+    if (PERANAN) st("stIsi", "Tiada peperiksaan untuk dipaparkan.", "err");
     return;
   }
-  document.getElementById("isiPepAktif").textContent = "Peperiksaan aktif untuk pengisian: " + peperiksaanIsi() + (cfg && cfg.kunci ? " (DIKUNCI)" : "");
+  var dipilih = peperiksaanIsi();
+  var bolehSimpan = bolehSimpanPeperiksaanIsi();
+  var keterangan = bolehSimpan
+    ? "Peperiksaan aktif untuk pengisian: " + dipilih
+    : "Peperiksaan dipilih: " + dipilih + " (PAPARAN SAHAJA" +
+      (cfg && cfg.kunci ? " • DIKUNCI" : (INIT.aktif ? " • bukan peperiksaan aktif" : " • tiada peperiksaan aktif")) + ")";
+  document.getElementById("isiPepAktif").textContent = keterangan;
   var senarai = kelasSertai(cfg).slice();
   if (PERANAN === "guru") {
     var kelasGuru = [];
@@ -959,6 +970,7 @@ function isiDropdownKelasCetak() {
 
 function tukarPeperiksaan() {
   ANALISIS = null;
+  KELAS_CACHE = {};
   document.getElementById("dashIsi").style.display = "none";
   isiDropdownKelasIsi();
   isiDropdownKelasCetak();
@@ -1056,7 +1068,8 @@ function binaJadualIsi(kelas, subjek, peta) {
 
   d.murid.forEach(function (m) {
     var ambil = m.ambil[subjek];
-    var rec = (peta[m.ic] && peta[m.ic][subjek]) || { m: "", tp: "" };
+    var rec = (peta[m.ic] && peta[m.ic][subjek]) ||
+              (peta[m.nama] && peta[m.nama][subjek]) || { m: "", tp: "" };
     if (!ambil) {
       h += "<tr><td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina +
         "</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td></tr>";
@@ -1075,9 +1088,16 @@ function binaJadualIsi(kelas, subjek, peta) {
 
   document.getElementById("tIsi").innerHTML = h;
   var cfg = configIsi();
-  var kunci = cfg && cfg.kunci;
-  document.getElementById("btnSimpan").style.display = kunci ? "none" : "inline-block";
-  if (kunci) st("stIsi", "Peperiksaan ini telah dikunci — paparan sahaja untuk semua pengguna.", "err");
+  var bolehSimpan = bolehSimpanPeperiksaanIsi();
+  document.querySelectorAll("#tIsi input").forEach(function (input) {
+    input.disabled = !bolehSimpan;
+  });
+  document.getElementById("btnSimpan").style.display = bolehSimpan ? "inline-block" : "none";
+  if (!bolehSimpan) {
+    st("stIsi", cfg && cfg.kunci
+      ? "Peperiksaan ini telah dikunci — markah dan calon sejarah dipaparkan sahaja."
+      : "Peperiksaan ini bukan peperiksaan aktif — markah dan calon sejarah dipaparkan sahaja.", "err");
+  }
 }
 
 function kemasBaris(input) {
@@ -1106,6 +1126,10 @@ function simpanMarkah() {
   var subjek = document.getElementById("isiSubjek").value;
   if (!kelas || !subjek) return;
   if (!PERANAN) { st("stIsi", "⚠️ Sila login dahulu.", "err"); return; }
+  if (!bolehSimpanPeperiksaanIsi()) {
+    st("stIsi", "Peperiksaan dipilih hanya untuk paparan. Aktifkan dan buka kunci peperiksaan untuk menyimpan markah.", "err");
+    return;
+  }
 
   var data = [];
   var adaSalah = false;
