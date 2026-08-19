@@ -585,24 +585,24 @@
       <h3>📥 Muat Naik Data Murid (CSV iDMe/APDM)</h3>
       <div class="baris-pilih">
         <input type="file" id="csvMurid" accept=".csv,text/csv" onchange="bacaMuridCSV()">
+        <button class="btn btn-kecil" id="btnUploadMurid" onclick="uploadMuridCSV()" disabled>📤 Muat Naik &amp; Ganti Senarai Murid</button>
       </div>
       <div id="petaMurid" style="display:none">
         <p style="font-size:9pt;color:#555;margin:6px 0">
           Padankan lajur CSV dengan medan sistem (diteka automatik — betulkan jika salah):</p>
         <div class="baris-pilih">
-          <label style="font-size:9pt">Nama: <select id="mapNama"></select></label>
-          <label style="font-size:9pt">Jantina: <select id="mapJantina"></select></label>
-          <label style="font-size:9pt">Tahun: <select id="mapTahun"></select></label>
-          <label style="font-size:9pt">Kelas: <select id="mapKelas"></select></label>
-          <label style="font-size:9pt">Agama: <select id="mapAgama"></select></label>
-          <label style="font-size:9pt">No. KP: <select id="mapIC"></select></label>
+          <label style="font-size:9pt">Nama*: <select id="mapNama" onchange="kemasKiniPreviewMurid()"></select></label>
+          <label style="font-size:9pt">Jantina: <select id="mapJantina" onchange="kemasKiniPreviewMurid()"></select></label>
+          <label style="font-size:9pt">Tahun*: <select id="mapTahun" onchange="kemasKiniPreviewMurid()"></select></label>
+          <label style="font-size:9pt">Kelas*: <select id="mapKelas" onchange="kemasKiniPreviewMurid()"></select></label>
+          <label style="font-size:9pt">Agama: <select id="mapAgama" onchange="kemasKiniPreviewMurid()"></select></label>
+          <label style="font-size:9pt">IC/MyKad*: <select id="mapIC" onchange="kemasKiniPreviewMurid()"></select></label>
         </div>
         <p id="previewMurid" style="font-size:9pt;color:#555"></p>
-        <button class="btn btn-kecil" onclick="uploadMuridCSV()">📤 Muat Naik &amp; Ganti Senarai Murid</button>
       </div>
       <p style="font-size:8.5pt;color:#888;margin:8px 0 0">
         ⚠️ Senarai murid sedia ada akan DIGANTIKAN sepenuhnya. Markah TIDAK terjejas
-        (dipadankan semula melalui nama murid). Baris prasekolah dilangkau automatik.</p>
+        (dipadankan semula melalui IC/MyKad). Baris prasekolah dilangkau automatik.</p>
       <div class="status" id="stMurid"></div>
     </div>
 
@@ -690,6 +690,7 @@
 <script>
 var INIT = null, KELAS_CACHE = {}, ANALISIS = null, charts = {};
 var GURU_SEMENTARA = [];
+var CSV_MURID_TAJUK = [], CSV_MURID_BARIS = [], CSV_MURID_BARIS_TAJUK = 0;
 var PERANAN = null, GURU_AKTIF = "", KATA = "";
 var PEPERIKSAAN_PADAM = "";
 var WARNA = { A:"#43a047", B:"#7cb342", C:"#fdd835", D:"#fb8c00", E:"#f06292", F:"#e53935", TH:"#9e9e9e" };
@@ -1844,6 +1845,253 @@ function uploadGuruCSV() {
   baca.readAsText(fail);
 }
 function simpanGuruBesar() { google.script.run.withSuccessHandler(function (r) { st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanGuruBesar(document.getElementById("guruBesar").value, KATA); }
+
+// ── Muat naik murid daripada CSV iDMe/APDM ──
+function normTajukMuridCSV(v) {
+  var s = (v == null ? "" : String(v)).trim().toUpperCase();
+  if (s.normalize) s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return s.replace(/[^A-Z0-9]/g, "");
+}
+
+function kiraPemisahCSV(baris, pemisah) {
+  var dalamPetik = false, bil = 0;
+  for (var i = 0; i < baris.length; i++) {
+    if (baris[i] === '"') {
+      if (dalamPetik && baris[i + 1] === '"') i++;
+      else dalamPetik = !dalamPetik;
+    } else if (!dalamPetik && baris[i] === pemisah) bil++;
+  }
+  return bil;
+}
+
+function tekaPemisahCSV(teks) {
+  var calon = [",", ";", "\t"], skor = [0, 0, 0];
+  teks.split(/\r?\n/).filter(function (b) { return b.trim(); }).slice(0, 12).forEach(function (b) {
+    calon.forEach(function (p, i) { skor[i] += kiraPemisahCSV(b, p); });
+  });
+  var terbaik = 0;
+  for (var i = 1; i < skor.length; i++) if (skor[i] > skor[terbaik]) terbaik = i;
+  return calon[terbaik];
+}
+
+function pecahCSV(teks, pemisah) {
+  var semua = [], baris = [], medan = "", dalamPetik = false;
+  teks = (teks || "").replace(/^\uFEFF/, "");
+  for (var i = 0; i < teks.length; i++) {
+    var aksara = teks[i];
+    if (aksara === '"') {
+      if (dalamPetik && teks[i + 1] === '"') { medan += '"'; i++; }
+      else dalamPetik = !dalamPetik;
+    } else if (!dalamPetik && aksara === pemisah) {
+      baris.push(medan); medan = "";
+    } else if (!dalamPetik && (aksara === "\n" || aksara === "\r")) {
+      if (aksara === "\r" && teks[i + 1] === "\n") i++;
+      baris.push(medan); medan = "";
+      if (baris.some(function (v) { return String(v).trim() !== ""; })) semua.push(baris);
+      baris = [];
+    } else {
+      medan += aksara;
+    }
+  }
+  baris.push(medan);
+  if (baris.some(function (v) { return String(v).trim() !== ""; })) semua.push(baris);
+  return semua;
+}
+
+function cariLajurMurid(tajuk, medan) {
+  var alias = {
+    nama: ["NAMAMURID", "NAMAPELAJAR", "NAMAPENUH", "NAMA"],
+    jantina: ["JANTINA", "GENDER"],
+    tahun: ["TAHUNDARJAH", "TAHUN", "DARJAH"],
+    kelas: ["NAMAKELAS", "KELAS"],
+    agama: ["AGAMA"],
+    ic: ["NOKPMURID", "NOKADPENGENALAN", "NOMYKAD", "NOMBORKP", "MYKAD", "NOKP", "KADPENGENALAN"]
+  }[medan] || [];
+  var terbaik = -1, skorTerbaik = 0;
+  tajuk.forEach(function (asal, i) {
+    var h = normTajukMuridCSV(asal);
+    if (!h) return;
+    if (medan === "nama" && /(KELAS|GURU|BAPA|IBU|PENJAGA)/.test(h)) return;
+    alias.forEach(function (a) {
+      var skor = h === a ? 100 + a.length :
+        (a.length >= 4 && (h.indexOf(a) > -1 || a.indexOf(h) > -1) ? 50 + a.length : 0);
+      if (skor > skorTerbaik) { skorTerbaik = skor; terbaik = i; }
+    });
+  });
+  return terbaik;
+}
+
+function cariBarisTajukMurid(semua) {
+  var terbaik = 0, skorTerbaik = -1;
+  semua.slice(0, 30).forEach(function (baris, i) {
+    var medan = ["nama", "ic", "tahun", "kelas", "jantina", "agama"];
+    var jumpa = {};
+    medan.forEach(function (m) {
+      var idx = cariLajurMurid(baris, m);
+      if (idx > -1) jumpa[idx] = true;
+    });
+    var skor = Object.keys(jumpa).length * 10 + baris.filter(function (v) { return String(v).trim(); }).length;
+    if (skor > skorTerbaik) { skorTerbaik = skor; terbaik = i; }
+  });
+  return terbaik;
+}
+
+function isiPetaLajurMurid(id, medan) {
+  var sel = document.getElementById(id);
+  var h = '<option value="-1">-- Pilih lajur --</option>';
+  CSV_MURID_TAJUK.forEach(function (t, i) {
+    h += '<option value="' + i + '">' + escTeks(t || ("Lajur " + (i + 1))) + '</option>';
+  });
+  sel.innerHTML = h;
+  sel.value = String(cariLajurMurid(CSV_MURID_TAJUK, medan));
+}
+
+function indeksPetaMurid(id) {
+  var n = Number(document.getElementById(id).value);
+  return isNaN(n) ? -1 : n;
+}
+
+function kemasKiniPreviewMurid() {
+  var iNama = indeksPetaMurid("mapNama");
+  var iTahun = indeksPetaMurid("mapTahun");
+  var iKelas = indeksPetaMurid("mapKelas");
+  var iIC = indeksPetaMurid("mapIC");
+  var lengkap = iNama > -1 && iTahun > -1 && iKelas > -1 && iIC > -1;
+  var sah = CSV_MURID_BARIS.filter(function (r) { return iNama > -1 && String(r[iNama] || "").trim(); });
+  var contoh = sah.slice(0, 3).map(function (r) { return String(r[iNama] || "").trim(); }).join(", ");
+  document.getElementById("previewMurid").innerHTML =
+    '<b>' + sah.length + ' baris murid ditemui.</b> Baris tajuk: ' + CSV_MURID_BARIS_TAJUK +
+    (contoh ? '<br>Contoh: ' + escTeks(contoh) : '') +
+    (lengkap ? '<br><span style="color:#2e7d32">✅ Padanan wajib lengkap. Butang muat naik sedia digunakan.</span>' :
+      '<br><span style="color:#c62828">⚠️ Pilih lajur Nama, IC/MyKad, Tahun dan Kelas.</span>');
+  document.getElementById("btnUploadMurid").disabled = !lengkap || !sah.length;
+}
+
+function resetMuridCSV() {
+  CSV_MURID_TAJUK = []; CSV_MURID_BARIS = []; CSV_MURID_BARIS_TAJUK = 0;
+  document.getElementById("petaMurid").style.display = "none";
+  document.getElementById("btnUploadMurid").disabled = true;
+}
+
+function bacaMuridCSV() {
+  var input = document.getElementById("csvMurid");
+  var fail = input.files && input.files[0];
+  resetMuridCSV();
+  stTutup("stMurid");
+  if (!fail) return;
+  if (fail.size > 10 * 1024 * 1024) {
+    st("stMurid", "❌ Fail CSV terlalu besar (maksimum 10MB).", "err"); return;
+  }
+  st("stMurid", "⏳ Membaca dan menyemak fail CSV...", "loading");
+  var pembaca = new FileReader();
+  pembaca.onload = function () {
+    try {
+      var teks = String(pembaca.result || "");
+      var semua = pecahCSV(teks, tekaPemisahCSV(teks));
+      if (semua.length < 2) throw new Error("Fail tidak mempunyai baris data yang mencukupi.");
+      var barisTajuk = cariBarisTajukMurid(semua);
+      CSV_MURID_TAJUK = semua[barisTajuk].map(function (v, i) {
+        return String(v || "").trim() || ("Lajur " + (i + 1));
+      });
+      CSV_MURID_BARIS = semua.slice(barisTajuk + 1);
+      CSV_MURID_BARIS_TAJUK = barisTajuk + 1;
+      isiPetaLajurMurid("mapNama", "nama");
+      isiPetaLajurMurid("mapJantina", "jantina");
+      isiPetaLajurMurid("mapTahun", "tahun");
+      isiPetaLajurMurid("mapKelas", "kelas");
+      isiPetaLajurMurid("mapAgama", "agama");
+      isiPetaLajurMurid("mapIC", "ic");
+      document.getElementById("petaMurid").style.display = "block";
+      stTutup("stMurid");
+      kemasKiniPreviewMurid();
+    } catch (e) {
+      resetMuridCSV();
+      st("stMurid", "❌ Gagal membaca CSV: " + e.message, "err");
+    }
+  };
+  pembaca.onerror = function () {
+    resetMuridCSV();
+    st("stMurid", "❌ Fail tidak dapat dibaca. Sila pilih semula.", "err");
+  };
+  pembaca.readAsText(fail);
+}
+
+function nilaiMuridCSV(r, idx) {
+  return idx > -1 ? String(r[idx] == null ? "" : r[idx]).trim() : "";
+}
+
+function bersihICMuridCSV(v) {
+  return String(v || "").replace(/^'+/, "").replace(/[^0-9A-Za-z]/g, "");
+}
+
+function uploadMuridCSV() {
+  if (!CSV_MURID_BARIS.length) {
+    st("stMurid", "❌ Pilih dan semak fail CSV terlebih dahulu.", "err"); return;
+  }
+  var p = {
+    nama: indeksPetaMurid("mapNama"), jantina: indeksPetaMurid("mapJantina"),
+    tahun: indeksPetaMurid("mapTahun"), kelas: indeksPetaMurid("mapKelas"),
+    agama: indeksPetaMurid("mapAgama"), ic: indeksPetaMurid("mapIC")
+  };
+  if (p.nama < 0 || p.tahun < 0 || p.kelas < 0 || p.ic < 0) {
+    st("stMurid", "❌ Padankan Nama, IC/MyKad, Tahun dan Kelas terlebih dahulu.", "err"); return;
+  }
+
+  var senarai = [], icDilihat = {}, tanpaIC = [], icBerganda = [];
+  CSV_MURID_BARIS.forEach(function (r) {
+    var nama = nilaiMuridCSV(r, p.nama);
+    if (!nama) return;
+    var tahun = nilaiMuridCSV(r, p.tahun);
+    if (/PRA/i.test(tahun)) return;
+    var ic = bersihICMuridCSV(nilaiMuridCSV(r, p.ic));
+    if (!ic) { tanpaIC.push(nama); return; }
+    if (icDilihat[ic]) { icBerganda.push(ic); return; }
+    icDilihat[ic] = true;
+    senarai.push({
+      nama: nama,
+      jantina: nilaiMuridCSV(r, p.jantina),
+      tahun: tahun,
+      kelas: nilaiMuridCSV(r, p.kelas),
+      agama: nilaiMuridCSV(r, p.agama),
+      ic: ic
+    });
+  });
+  if (tanpaIC.length) {
+    st("stMurid", "❌ " + tanpaIC.length + " murid tiada IC/MyKad. Contoh: " + tanpaIC.slice(0, 3).join(", "), "err"); return;
+  }
+  if (icBerganda.length) {
+    st("stMurid", "❌ Terdapat IC/MyKad berganda: " + icBerganda.slice(0, 5).join(", "), "err"); return;
+  }
+  if (!senarai.length) {
+    st("stMurid", "❌ Tiada rekod murid yang sah untuk dimuat naik.", "err"); return;
+  }
+
+  var aktif = INIT && INIT.aktif ? INIT.aktif : "tiada";
+  if (!confirm(senarai.length + " murid akan menggantikan senarai MURID semasa.\n\n" +
+      "Peperiksaan aktif: " + aktif + "\n" +
+      "Markah sedia ada tidak dipadam dan dipadankan melalui IC/MyKad.\n\nTeruskan?")) return;
+
+  var btn = document.getElementById("btnUploadMurid");
+  btn.disabled = true;
+  st("stMurid", "⏳ Memuat naik " + senarai.length + " murid...", "loading");
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r || !r.ok) {
+      btn.disabled = false;
+      st("stMurid", "❌ " + (r && r.mesej ? r.mesej : "Muat naik gagal."), "err");
+      return;
+    }
+    document.getElementById("csvMurid").value = "";
+    resetMuridCSV();
+    KELAS_CACHE = {}; ANALISIS = null;
+    segarkanInit(function () {
+      muatTetapan();
+      st("stMurid", "✅ " + r.mesej + " Senarai calon peperiksaan aktif turut dikemaskini.", "ok");
+    });
+  }).withFailureHandler(function (e) {
+    btn.disabled = false;
+    st("stMurid", "❌ Gagal memuat naik: " + (e && e.message ? e.message : e), "err");
+  }).apiUploadMurid(senarai, KATA);
+}
 
 function isiSubjekDropdown(kelas) {
   var d = KELAS_CACHE[kelas];
