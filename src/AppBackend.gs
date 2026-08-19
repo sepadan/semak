@@ -1216,6 +1216,8 @@ function _jawapanRpcGitHub(id, ok, hasil, ralat) {
     "<script>(function(){var p=" + muatan + ";" +
     "try{window.parent.postMessage(p,'*');}catch(e){}" +
     "try{window.parent.parent.postMessage(p,'https://sepadan.github.io');}catch(e){}" +
+    "try{window.parent.parent.parent.postMessage(p,'https://sepadan.github.io');}catch(e){}" +
+    "try{window.parent.parent.parent.parent.postMessage(p,'https://sepadan.github.io');}catch(e){}" +
     "try{window.top.postMessage(p,'https://sepadan.github.io');}catch(e){}" +
     "})();</script></body></html>";
 
