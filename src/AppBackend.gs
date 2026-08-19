@@ -814,7 +814,7 @@ function apiUploadMurid(senarai, kata) {
       "1":"1","2":"2","3":"3","4":"4","5":"5","6":"6"
     };
 
-    var baris = [];
+    var baris = [], icDigunakan = {};
     for (var i = 0; i < senarai.length; i++) {
       var m = senarai[i];
       var nama = (m.nama || "").toString().trim().toUpperCase();
@@ -837,8 +837,13 @@ function apiUploadMurid(senarai, kata) {
       var jantina = (jRaw === "L" || jRaw.indexOf("LELAKI") > -1) ? "L"
                   : (jRaw === "P" || jRaw.indexOf("PEREMPUAN") > -1) ? "P" : "";
 
+      var ic = (m.ic || "").toString().trim().replace(/^'+/, "").replace(/[^0-9A-Za-z]/g, "");
+      if (!ic) return { ok: false, mesej: "IC/MyKad tiada untuk murid: " + nama };
+      if (icDigunakan[ic]) return { ok: false, mesej: "IC/MyKad berganda dalam fail: " + ic };
+      icDigunakan[ic] = true;
+
       baris.push([nama, jantina, kelas, digit,
-        (m.agama || "").toString().trim(), (m.ic || "").toString().trim()]);
+        (m.agama || "").toString().trim(), ic]);
     }
 
     if (!baris.length)
@@ -2049,7 +2054,7 @@ function apiUploadMurid(senarai, kata) {
       "1":"1","2":"2","3":"3","4":"4","5":"5","6":"6"
     };
 
-    var baris = [];
+    var baris = [], icDigunakan = {};
     for (var i = 0; i < senarai.length; i++) {
       var m = senarai[i];
       var nama = (m.nama || "").toString().trim().toUpperCase();
@@ -2072,8 +2077,13 @@ function apiUploadMurid(senarai, kata) {
       var jantina = (jRaw === "L" || jRaw.indexOf("LELAKI") > -1) ? "L"
                   : (jRaw === "P" || jRaw.indexOf("PEREMPUAN") > -1) ? "P" : "";
 
+      var ic = (m.ic || "").toString().trim().replace(/^'+/, "").replace(/[^0-9A-Za-z]/g, "");
+      if (!ic) return { ok: false, mesej: "IC/MyKad tiada untuk murid: " + nama };
+      if (icDigunakan[ic]) return { ok: false, mesej: "IC/MyKad berganda dalam fail: " + ic };
+      icDigunakan[ic] = true;
+
       baris.push([nama, jantina, kelas, digit,
-        (m.agama || "").toString().trim(), (m.ic || "").toString().trim()]);
+        (m.agama || "").toString().trim(), ic]);
     }
 
     if (!baris.length)
