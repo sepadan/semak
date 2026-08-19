@@ -5,6 +5,115 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SEMAK — Sistem Markah</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+/*
+ * Apabila App.html dibuka daripada GitHub Pages, google.script.run tidak wujud.
+ * Penyesuai ini mengekalkan panggilan sedia ada dan menghantarnya ke Apps Script
+ * melalui POST borang tersembunyi. Apabila fail disajikan terus oleh Apps Script,
+ * penyesuai ini tidak diaktifkan.
+ */
+(function pasangJambatanAppsScript() {
+  if (window.google && window.google.script && window.google.script.run) return;
+
+  var HUJUNG_API = "https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec";
+  var MENUNGGU = {};
+  var BILANGAN = 0;
+
+  function asalGoogleSah(asal) {
+    return asal === "https://script.google.com" ||
+      /^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/i.test(asal);
+  }
+
+  function buangPermintaan(id) {
+    var item = MENUNGGU[id];
+    if (!item) return;
+    clearTimeout(item.pemasa);
+    if (item.bingkai && item.bingkai.parentNode) item.bingkai.parentNode.removeChild(item.bingkai);
+    delete MENUNGGU[id];
+  }
+
+  window.addEventListener("message", function (acara) {
+    if (!asalGoogleSah(acara.origin)) return;
+    var data = acara.data || {};
+    if (data.sumber !== "semak-rpc" || !MENUNGGU[data.id]) return;
+
+    var item = MENUNGGU[data.id];
+    buangPermintaan(data.id);
+    if (data.ok) {
+      if (typeof item.berjaya === "function") item.berjaya(data.hasil);
+    } else {
+      var ralat = new Error(data.ralat || "Permintaan kepada pelayan gagal.");
+      if (typeof item.gagal === "function") item.gagal(ralat);
+      else console.error(ralat);
+    }
+  });
+
+  function medan(borang, nama, nilai) {
+    var input = document.createElement("input");
+    input.type = "hidden";
+    input.name = nama;
+    input.value = nilai;
+    borang.appendChild(input);
+  }
+
+  function panggilApi(kaedah, argumen, berjaya, gagal) {
+    var id = "rpc_" + Date.now() + "_" + (++BILANGAN);
+    var namaBingkai = "semak_rpc_" + id;
+    var bingkai = document.createElement("iframe");
+    bingkai.name = namaBingkai;
+    bingkai.setAttribute("aria-hidden", "true");
+    bingkai.style.display = "none";
+    document.body.appendChild(bingkai);
+
+    var borang = document.createElement("form");
+    borang.method = "POST";
+    borang.action = HUJUNG_API;
+    borang.target = namaBingkai;
+    borang.style.display = "none";
+    medan(borang, "mode", "rpc");
+    medan(borang, "id", id);
+    medan(borang, "kaedah", kaedah);
+    medan(borang, "argumen", JSON.stringify(argumen || []));
+    document.body.appendChild(borang);
+
+    MENUNGGU[id] = {
+      berjaya: berjaya,
+      gagal: gagal,
+      bingkai: bingkai,
+      pemasa: setTimeout(function () {
+        var item = MENUNGGU[id];
+        buangPermintaan(id);
+        var ralat = new Error("Pelayan mengambil masa terlalu lama. Sila cuba semula.");
+        if (item && typeof item.gagal === "function") item.gagal(ralat);
+        else console.error(ralat);
+      }, 90000)
+    };
+
+    borang.submit();
+    borang.parentNode.removeChild(borang);
+  }
+
+  function pelaksana(berjaya, gagal) {
+    return new Proxy({}, {
+      get: function (_, nama) {
+        if (nama === "withSuccessHandler") {
+          return function (fn) { return pelaksana(fn, gagal); };
+        }
+        if (nama === "withFailureHandler") {
+          return function (fn) { return pelaksana(berjaya, fn); };
+        }
+        return function () {
+          panggilApi(String(nama), Array.prototype.slice.call(arguments), berjaya, gagal);
+        };
+      }
+    });
+  }
+
+  window.google = window.google || {};
+  window.google.script = window.google.script || {};
+  window.google.script.run = pelaksana(null, null);
+})();
+</script>
 <style>
   :root { --biru:#1a237e; --biru2:#3949ab; --biru3:#e8eaf6; --hijau:#2e7d32; --merah:#c62828; }
   * { box-sizing:border-box; }
@@ -549,12 +658,40 @@
   </div>
 </div>
 
+<!-- Pengesahan padam peperiksaan -->
+<div class="modal-latar" id="mPadamPep">
+  <div class="modal">
+    <!-- Langkah 1: amaran + pilihan backup -->
+    <div id="padamLangkah1">
+      <h3>⚠️ Padam Peperiksaan</h3>
+      <p id="teksPadamPep" style="font-size:10pt;line-height:1.5"></p>
+      <p style="font-size:10pt;font-weight:bold;margin:14px 0 8px">
+        Adakah anda mahu membuat backup sebelum memadam?</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1" onclick="pilihBackupPadam(true)">🛡️ Ya, backup dulu</button>
+        <button class="btn btn-merah" style="flex:1" onclick="pilihBackupPadam(false)">Tidak perlu</button>
+      </div>
+    </div>
+    <!-- Langkah 2: kata laluan -->
+    <div id="padamLangkah2" style="display:none">
+      <h3>🔐 Sahkan Dengan Kata Laluan</h3>
+      <p id="teksPadamPep2" style="font-size:10pt;line-height:1.5"></p>
+      <input type="password" id="kataPadamPep" placeholder="Masukkan kata laluan admin"
+             onkeydown="if(event.key==='Enter')sahkanPadamPep()">
+      <button class="btn btn-merah" id="btnSahPadam" onclick="sahkanPadamPep()">Sahkan Padam</button>
+    </div>
+    <div class="status" id="stPadamPep"></div>
+    <button class="tutup" onclick="tutupPadamPep()">Batal</button>
+  </div>
+</div>
+
 <div id="printArea"></div>
 
 <script>
 var INIT = null, KELAS_CACHE = {}, ANALISIS = null, charts = {};
 var GURU_SEMENTARA = [];
 var PERANAN = null, GURU_AKTIF = "", KATA = "";
+var PEPERIKSAAN_PADAM = "";
 var WARNA = { A:"#43a047", B:"#7cb342", C:"#fdd835", D:"#fb8c00", E:"#f06292", F:"#e53935", TH:"#9e9e9e" };
 var KUNCI_SESI = "sms_sesi_v1";
 
@@ -826,6 +963,10 @@ function tukarPeperiksaan() {
   muatDash(); // analisis dimuat semula automatik ikut peperiksaan dipilih
 }
 
+function tambahPeperiksaanDropdown(nama) {
+  segarkanInit();
+}
+
 // ═══════════════ ISI MARKAH ═══════════════
 function kiraGredJS(v) {
   if (v === "" || v === null) return "";
@@ -882,21 +1023,8 @@ function isiSubjekDropdown(kelas) {
     h += '<option value="' + s.n + '"' + (s.n === semasa ? " selected" : "") + '>' + s.n + '</option>';
   });
   sel.innerHTML = h;
-  // Selepas kelas dipilih, terus gunakan subjek pertama yang dibenarkan.
-  // Ini memastikan jadual dan senarai nama murid terus dipaparkan tanpa
-  // pengguna perlu memilih subjek sekali lagi.
-  if (!sel.value && senarai.length) sel.value = senarai[0].n;
-  if (!senarai.length) {
-    document.getElementById("tIsi").innerHTML = "";
-    document.getElementById("btnSimpan").style.display = "none";
-    if (PERANAN === "guru")
-      st("stIsi", "Anda tiada tugasan subjek untuk kelas ini. Hubungi admin.", "err");
-    else
-      st("stIsi", "⚠️ Tiada subjek ditetapkan untuk kelas '" + kelas +
-         "' dalam peperiksaan aktif. Buka Tetapan → Peperiksaan, tandakan subjek " +
-         "untuk kelas ini, kemudian Simpan Peperiksaan.", "err");
-    return;
-  }
+  if (!senarai.length && PERANAN === "guru")
+    st("stIsi", "Anda tiada tugasan subjek untuk kelas ini.", "err");
   if (sel.value) muatJadualIsi();
 }
 
@@ -918,58 +1046,36 @@ function muatJadualIsi() {
 }
 
 function binaJadualIsi(kelas, subjek, peta) {
-  try {
-    var d = KELAS_CACHE[kelas];
-    // Tiada murid langsung dalam kelas ini — beri sebab yang jelas, jangan
-    // paparkan jadual kosong (tajuk sahaja) tanpa penjelasan.
-    if (!d || !d.murid || !d.murid.length) {
-      document.getElementById("tIsi").innerHTML = "";
-      document.getElementById("btnSimpan").style.display = "none";
-      st("stIsi", "⚠️ Tiada murid dalam kelas '" + kelas + "'. " +
-         "Kemungkinan: (1) data murid belum disegerak — jalankan menu 📘 SEMAK → " +
-         "🔄 Segerak Data Murid (dari Sheet1); atau (2) kelas ini ditanda dalam " +
-         "peperiksaan tetapi nama kelasnya tidak sepadan dengan senarai MURID.", "err");
+  var d = KELAS_CACHE[kelas];
+  var tahap1 = d.tahap1;
+  var h = "<tr><th style='width:36px'>Bil</th><th>Nama Murid</th><th style='width:34px'>J</th>" +
+          "<th style='width:80px'>Markah</th><th style='width:56px'>Gred</th>" +
+          "<th style='width:80px'>TP" + (tahap1 ? " (manual)" : " (auto)") + "</th></tr>";
+
+  d.murid.forEach(function (m) {
+    var ambil = m.ambil[subjek];
+    var rec = (peta[m.ic] && peta[m.ic][subjek]) || { m: "", tp: "" };
+    if (!ambil) {
+      h += "<tr><td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina +
+        "</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td></tr>";
       return;
     }
-    var tahap1 = d.tahap1;
-    var h = "<tr><th style='width:36px'>Bil</th><th>Nama Murid</th><th style='width:34px'>J</th>" +
-            "<th style='width:80px'>Markah</th><th style='width:56px'>Gred</th>" +
-            "<th style='width:80px'>TP" + (tahap1 ? " (manual)" : " (auto)") + "</th></tr>";
+    var gred = kiraGredJS(rec.m);
+    var tpVal = tahap1 ? rec.tp : (rec.tp !== "" ? rec.tp : kiraTPJS(rec.m));
+    h += "<tr data-nama='" + m.nama.replace(/'/g, "&#39;") + "' data-ic='" + (m.ic || "").replace(/'/g, "&#39;") + "'>" +
+      "<td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina + "</td>" +
+      "<td><input class='markah inM' value='" + rec.m + "' oninput='kemasBaris(this)'></td>" +
+      "<td class='selGred g-" + gred + "'><span class='gred-sel'>" + (gred || "-") + "</span></td>" +
+      "<td>" + (tahap1
+        ? "<input class='markah inTP' value='" + (rec.tp === null ? "" : rec.tp) + "'>"
+        : "<span class='selTP'>" + (tpVal === "" ? "-" : tpVal) + "</span>") + "</td></tr>";
+  });
 
-    var bilBolehIsi = 0;
-    d.murid.forEach(function (m) {
-      var ambil = m.ambil[subjek];
-      var rec = (peta[m.ic] && peta[m.ic][subjek]) || { m: "", tp: "" };
-      if (ambil) bilBolehIsi++;
-      if (!ambil) {
-        h += "<tr><td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina +
-          "</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td><td class='g-TH'>N/A</td></tr>";
-        return;
-      }
-      var gred = kiraGredJS(rec.m);
-      var tpVal = tahap1 ? rec.tp : (rec.tp !== "" ? rec.tp : kiraTPJS(rec.m));
-      h += "<tr data-nama='" + m.nama.replace(/'/g, "&#39;") + "' data-ic='" + (m.ic || "").toString().replace(/'/g, "&#39;") + "'>" +
-        "<td>" + m.bil + "</td><td class='kiri'>" + m.nama + "</td><td>" + m.jantina + "</td>" +
-        "<td><input class='markah inM' value='" + rec.m + "' oninput='kemasBaris(this)'></td>" +
-        "<td class='selGred g-" + gred + "'><span class='gred-sel'>" + (gred || "-") + "</span></td>" +
-        "<td>" + (tahap1
-          ? "<input class='markah inTP' value='" + (rec.tp === null ? "" : rec.tp) + "'>"
-          : "<span class='selTP'>" + (tpVal === "" ? "-" : tpVal) + "</span>") + "</td></tr>";
-    });
-
-    document.getElementById("tIsi").innerHTML = h;
-    var cfg = configIsi();
-    var kunci = cfg && cfg.kunci;
-    document.getElementById("btnSimpan").style.display =
-      (kunci || bilBolehIsi === 0) ? "none" : "inline-block";
-    if (kunci)
-      st("stIsi", "Peperiksaan ini telah dikunci — paparan sahaja untuk semua pengguna.", "err");
-    else if (bilBolehIsi === 0)
-      st("stIsi", "ℹ️ Tiada murid dalam kelas ini yang mengambil subjek '" + subjek +
-         "' (semua N/A). Semak syarat subjek (cth Islam/Bukan Islam) atau pilih subjek lain.", "err");
-  } catch (e) {
-    st("stIsi", "❌ Ralat membina jadual markah: " + (e.message || e), "err");
-  }
+  document.getElementById("tIsi").innerHTML = h;
+  var cfg = configIsi();
+  var kunci = cfg && cfg.kunci;
+  document.getElementById("btnSimpan").style.display = kunci ? "none" : "inline-block";
+  if (kunci) st("stIsi", "Peperiksaan ini telah dikunci — paparan sahaja untuk semua pengguna.", "err");
 }
 
 function kemasBaris(input) {
@@ -1635,8 +1741,9 @@ function tambahPeperiksaan() {
 
 function simpanPepAktif() {
   var nama = document.getElementById("tetAktif").value;
+  if (!nama) return;
   google.script.run.withSuccessHandler(function (r) {
-    st("stAktif", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
+    st("stPep", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
     if (r.ok) segarkanInit(muatTetapan);
   }).apiTetapkanAktif(nama, KATA);
 }
@@ -1645,14 +1752,12 @@ function padamPep() {
   var nama = document.getElementById("tetPep").value;
   if (!nama) return;
   if (!confirm("Padam peperiksaan '" + nama + "' dan semua markahnya? Tindakan ini tidak boleh dibatalkan.")) return;
-  var backupDulu = confirm("Buat backup penuh sebelum memadam?\n\nOK = ya, backup dulu.\nBatal = teruskan tanpa backup.");
-  st("stPep", "⏳ Memadam...", "loading");
+  var kata = prompt("Masukkan kata laluan admin untuk sahkan pemadaman:");
+  if (kata === null) return;
   google.script.run.withSuccessHandler(function (r) {
     st("stPep", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
     if (r.ok) segarkanInit(muatTetapan);
-  }).withFailureHandler(function (e) {
-    st("stPep", "❌ " + e.message, "err");
-  }).apiPadamPeperiksaan(nama, backupDulu, KATA);
+  }).apiPadamPeperiksaan(nama, false, kata);
 }
 
 function binaMatriksTugasan() {
@@ -1678,24 +1783,12 @@ function binaMatriksTugasan() {
 
 function simpanTugasan() {
   var tugasan = [], guruKelas = [], kelasTerlibat = [];
-  document.querySelectorAll("#tTugasan .guru-tugas").forEach(function (s) {
-    if (s.value) tugasan.push({ kelas: s.dataset.kelas, subjek: s.dataset.subjek, guru: s.value });
-    if (kelasTerlibat.indexOf(s.dataset.kelas) < 0) kelasTerlibat.push(s.dataset.kelas);
-  });
-  document.querySelectorAll("#tTugasan .guru-kelas").forEach(function (s) {
-    guruKelas.push({ kelas: s.dataset.kelas, guru: s.value });
-    if (kelasTerlibat.indexOf(s.dataset.kelas) < 0) kelasTerlibat.push(s.dataset.kelas);
-  });
+  document.querySelectorAll("#tTugasan .guru-tugas").forEach(function (s) { if (s.value) tugasan.push({ kelas: s.dataset.kelas, subjek: s.dataset.subjek, guru: s.value }); if (kelasTerlibat.indexOf(s.dataset.kelas) < 0) kelasTerlibat.push(s.dataset.kelas); });
+  document.querySelectorAll("#tTugasan .guru-kelas").forEach(function (s) { guruKelas.push({ kelas: s.dataset.kelas, guru: s.value }); if (kelasTerlibat.indexOf(s.dataset.kelas) < 0) kelasTerlibat.push(s.dataset.kelas); });
   st("stTugasan", "⏳ Menyimpan...", "loading");
-  google.script.run.withSuccessHandler(function (r) {
-    st("stTugasan", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) segarkanInit(muatTetapan);
-  }).withFailureHandler(function (e) {
-    st("stTugasan", "❌ " + e.message, "err");
-  }).apiSimpanTugasan(tugasan, guruKelas, kelasTerlibat, KATA);
+  google.script.run.withSuccessHandler(function (r) { st("stTugasan", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanTugasan(tugasan, guruKelas, kelasTerlibat, KATA);
 }
 
-// ── Senarai guru ──
 function binaSenaraiGuru(pilihan) {
   GURU_SEMENTARA = INIT.guru.slice();
   lukisDropdownGuru(pilihan || "");
@@ -1735,15 +1828,7 @@ function padamGuruTerpilih() {
   GURU_SEMENTARA.splice(GURU_SEMENTARA.indexOf(nama), 1); lukisDropdownGuru("");
   st("stGuru", "✅ Guru telah dibuang. Tekan Simpan Senarai untuk simpan kekal.", "ok");
 }
-function simpanGuru() {
-  var g = GURU_SEMENTARA.slice();
-  google.script.run.withSuccessHandler(function (r) {
-    st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) segarkanInit(muatTetapan);
-  }).withFailureHandler(function (e) {
-    st("stGuru", "❌ " + e.message, "err");
-  }).apiSimpanGuru(g, document.getElementById("guruBesar").value, KATA);
-}
+function simpanGuru() { var g = GURU_SEMENTARA.slice(); google.script.run.withSuccessHandler(function (r) { st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanGuru(g, document.getElementById("guruBesar").value, KATA); }
 function uploadGuruCSV() {
   var fail = document.getElementById("csvGuru").files[0];
   if (!fail) { st("stGuru", "Sila pilih fail CSV terlebih dahulu.", "err"); return; }
@@ -1755,163 +1840,129 @@ function uploadGuruCSV() {
   };
   baca.readAsText(fail);
 }
-function simpanGuruBesar() {
-  google.script.run.withSuccessHandler(function (r) {
-    st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) segarkanInit(muatTetapan);
-  }).apiSimpanGuruBesar(document.getElementById("guruBesar").value, KATA);
-}
+function simpanGuruBesar() { google.script.run.withSuccessHandler(function (r) { st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanGuruBesar(document.getElementById("guruBesar").value, KATA); }
 
-// ═══════════════ MUAT NAIK CSV MURID ═══════════════
-var CSV_MURID_BARIS = null, CSV_MURID_HEADER = null;
-
-// Pembaca CSV ringkas yang menyokong medan berpetik (cth alamat mengandungi koma)
-function pecahBarisCSV(baris) {
-  var hasil = [], semasa = "", dlmPetik = false;
-  for (var i = 0; i < baris.length; i++) {
-    var c = baris.charAt(i);
-    if (c === '"') {
-      if (dlmPetik && baris.charAt(i + 1) === '"') { semasa += '"'; i++; }
-      else dlmPetik = !dlmPetik;
-    } else if (c === "," && !dlmPetik) { hasil.push(semasa); semasa = ""; }
-    else semasa += c;
-  }
-  hasil.push(semasa);
-  return hasil.map(function (v) { return v.trim(); });
-}
-
-function tekaLajur(header, kunci) {
-  for (var i = 0; i < header.length; i++) {
-    var h = header[i].toUpperCase();
-    for (var j = 0; j < kunci.length; j++) if (h.indexOf(kunci[j]) > -1) return i;
-  }
-  return -1;
-}
-
-function bacaMuridCSV() {
-  var fail = document.getElementById("csvMurid").files[0];
-  if (!fail) return;
-  var baca = new FileReader();
-  baca.onload = function () {
-    var baris = baca.result.split(/\r?\n/).filter(function (b) { return b.trim() !== ""; });
-    // Cari baris header: baris pertama yang mengandungi perkataan "NAMA"
-    var idxHeader = 0;
-    for (var i = 0; i < Math.min(baris.length, 12); i++) {
-      if (baris[i].toUpperCase().indexOf("NAMA") > -1) { idxHeader = i; break; }
-    }
-    CSV_MURID_HEADER = pecahBarisCSV(baris[idxHeader]);
-    CSV_MURID_BARIS = baris.slice(idxHeader + 1).map(pecahBarisCSV);
-
-    var medan = {
-      mapNama:    ["NAMA MURID", "NAMA"],
-      mapJantina: ["JANTINA"],
-      mapTahun:   ["TAHUN", "TINGKATAN"],
-      mapKelas:   ["NAMA KELAS", "KELAS"],
-      mapAgama:   ["AGAMA"],
-      mapIC:      ["NO. PENGENALAN", "PENGENALAN", "KP", "MYKAD", "IC"]
-    };
-    Object.keys(medan).forEach(function (id) {
-      var sel = document.getElementById(id);
-      var teka = tekaLajur(CSV_MURID_HEADER, medan[id]);
-      sel.innerHTML = '<option value="-1">-- tiada --</option>' +
-        CSV_MURID_HEADER.map(function (h, i) {
-          return '<option value="' + i + '"' + (i === teka ? " selected" : "") + '>' +
-                 escTeks(h || ("Lajur " + (i + 1))) + '</option>';
-        }).join("");
+function isiSubjekDropdown(kelas) {
+  var d = KELAS_CACHE[kelas];
+  var cfg = configIsi();
+  var dibenark = subjekSertai(cfg, kelas);
+  var senarai = d.subjek.filter(function (s) { return dibenark.indexOf(s.n) > -1; });
+  if (PERANAN === "guru") {
+    var subjekGuru = [];
+    INIT.tugasan.forEach(function (t) {
+      if (t.guru === GURU_AKTIF && t.kelas === kelas) subjekGuru.push(t.subjek);
     });
-
-    document.getElementById("petaMurid").style.display = "block";
-    document.getElementById("previewMurid").textContent =
-      CSV_MURID_BARIS.length + " baris data dibaca daripada CSV (header: baris " + (idxHeader + 1) + ").";
-    stTutup("stMurid");
-  };
-  baca.readAsText(fail);
-}
-
-function uploadMuridCSV() {
-  if (!CSV_MURID_BARIS || !CSV_MURID_BARIS.length) {
-    st("stMurid", "⚠️ Pilih dan baca fail CSV dahulu.", "err"); return;
+    senarai = senarai.filter(function (s) { return subjekGuru.indexOf(s.n) > -1; });
   }
-  var idx = {};
-  ["Nama", "Jantina", "Tahun", "Kelas", "Agama", "IC"].forEach(function (k) {
-    idx[k.toLowerCase()] = parseInt(document.getElementById("map" + k).value, 10);
+  var sel = document.getElementById("isiSubjek");
+  var semasa = sel.value;
+  var h = '<option value="">-- Pilih Subjek --</option>';
+  senarai.forEach(function (s) {
+    h += '<option value="' + s.n + '"' + (s.n === semasa ? " selected" : "") + '>' + s.n + '</option>';
   });
-  if (idx.nama < 0) { st("stMurid", "⚠️ Lajur Nama wajib dipilih.", "err"); return; }
-
-  var ambil = function (baris, i) { return (i >= 0 && i < baris.length) ? baris[i] : ""; };
-  var senarai = CSV_MURID_BARIS.map(function (b) {
-    return {
-      nama:    ambil(b, idx.nama),
-      jantina: ambil(b, idx.jantina),
-      tahun:   ambil(b, idx.tahun),
-      kelas:   ambil(b, idx.kelas),
-      agama:   ambil(b, idx.agama),
-      ic:      ambil(b, idx.ic)
-    };
-  }).filter(function (m) { return m.nama; });
-
-  if (!confirm(senarai.length + " baris akan menggantikan SEPENUHNYA senarai murid sedia ada.\n\nTeruskan?")) return;
-
-  st("stMurid", "⏳ Memuat naik...", "loading");
-  google.script.run.withSuccessHandler(function (r) {
-    st("stMurid", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) {
-      document.getElementById("csvMurid").value = "";
-      document.getElementById("petaMurid").style.display = "none";
-      CSV_MURID_BARIS = null;
-      KELAS_CACHE = {}; ANALISIS = null;
-      segarkanInit(muatTetapan);
-    }
-  }).withFailureHandler(function (e) {
-    st("stMurid", "❌ " + e.message, "err");
-  }).apiUploadMurid(senarai, KATA);
+  sel.innerHTML = h;
+  if (!sel.value && senarai.length) sel.value = senarai[0].n;
+  if (!senarai.length && PERANAN === "guru") st("stIsi", "Anda tiada tugasan subjek untuk kelas ini.", "err");
+  if (sel.value) muatJadualIsi();
 }
 
-// ═══════════════ SISTEM ═══════════════
-function adminSegerak() {
-  st("stSistem", "⏳ Menyegerak data murid...", "loading");
-  google.script.run.withSuccessHandler(function (r) {
-    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) { KELAS_CACHE = {}; ANALISIS = null; segarkanInit(muatTetapan); }
-  }).withFailureHandler(function (e) {
-    st("stSistem", "❌ " + e.message, "err");
-  }).apiSegerakMuridAdmin(KATA);
-}
-
-function adminBackup() {
-  st("stSistem", "⏳ Membuat backup...", "loading");
-  google.script.run.withSuccessHandler(function (r) {
-    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-  }).withFailureHandler(function (e) {
-    st("stSistem", "❌ " + e.message, "err");
-  }).apiBackupAdmin(KATA);
-}
-
-function tukarKL() {
-  var baru = document.getElementById("klBaru").value.trim();
-  if (baru.length < 4) { st("stSistem", "⚠️ Kata laluan mesti sekurang-kurangnya 4 aksara.", "err"); return; }
-  st("stSistem", "⏳ Menukar...", "loading");
-  google.script.run.withSuccessHandler(function (r) {
-    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) document.getElementById("klBaru").value = "";
-  }).withFailureHandler(function (e) {
-    st("stSistem", "❌ " + e.message, "err");
-  }).apiTukarKataLaluan(baru, KATA);
-}
-
-function tukarKLGuru() {
-  var nama = document.getElementById("klGuruNama").value;
-  var baru = document.getElementById("klGuruBaru").value.trim();
-  if (!nama) { st("stSistem", "⚠️ Pilih guru dahulu.", "err"); return; }
-  if (baru.length < 4) { st("stSistem", "⚠️ Kata laluan mesti sekurang-kurangnya 4 aksara.", "err"); return; }
-  st("stSistem", "⏳ Menukar...", "loading");
-  google.script.run.withSuccessHandler(function (r) {
-    st("stSistem", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) document.getElementById("klGuruBaru").value = "";
-  }).withFailureHandler(function (e) {
-    st("stSistem", "❌ " + e.message, "err");
-  }).apiSetKataGuru(nama, baru, KATA);
-}
 </script>
 </body>
 </html>
+
+
+<script>
+/* Pembetulan paparan Isi Markah: kelas, subjek dan senarai murid */
+function normIsiMarkah(v) {
+  return (v == null ? "" : String(v)).replace(/\s+/g, " ").trim().toUpperCase();
+}
+function muatIsi() {
+  if (!peperiksaanIsi()) return;
+  var kelas = document.getElementById("isiKelas").value;
+  document.getElementById("tIsi").innerHTML = "";
+  document.getElementById("btnSimpan").style.display = "none";
+  stTutup("stIsi");
+  if (!kelas) return;
+  if (KELAS_CACHE[kelas]) {
+    isiSubjekDropdown(kelas);
+    return;
+  }
+  st("stIsi", "⏳ Memuat senarai murid...", "loading");
+  google.script.run.withSuccessHandler(function (d) {
+    if (!d || !Array.isArray(d.murid) || !Array.isArray(d.subjek)) {
+      st("stIsi", "❌ Data kelas tidak lengkap. Sila pilih semula kelas.", "err");
+      return;
+    }
+    KELAS_CACHE[kelas] = d;
+    stTutup("stIsi");
+    isiSubjekDropdown(kelas);
+  }).withFailureHandler(function (e) {
+    st("stIsi", "❌ Gagal memuat senarai murid: " + (e && e.message ? e.message : e), "err");
+  }).apiKelas(kelas);
+}
+function isiSubjekDropdown(kelas) {
+  var d = KELAS_CACHE[kelas];
+  var sel = document.getElementById("isiSubjek");
+  if (!d || !Array.isArray(d.subjek)) {
+    st("stIsi", "❌ Data kelas belum dimuat. Sila pilih kelas semula.", "err");
+    return;
+  }
+  var cfg = configIsi();
+  var dibenarkan = subjekSertai(cfg, kelas) || [];
+  var petaBoleh = {};
+  dibenarkan.forEach(function (s) { petaBoleh[normIsiMarkah(s)] = true; });
+  var senarai = d.subjek.filter(function (s) { return petaBoleh[normIsiMarkah(s.n)]; });
+  if (PERANAN === "guru") {
+    var subjekGuru = {};
+    (INIT.tugasan || []).forEach(function (t) {
+      if (t.guru === GURU_AKTIF && t.kelas === kelas) subjekGuru[normIsiMarkah(t.subjek)] = true;
+    });
+    senarai = senarai.filter(function (s) { return subjekGuru[normIsiMarkah(s.n)]; });
+  }
+  var semasa = sel.value;
+  var h = '<option value="">-- Pilih Subjek --</option>';
+  senarai.forEach(function (s) {
+    h += '<option value="' + s.n + '"' + (s.n === semasa ? " selected" : "") + '>' + s.n + '</option>';
+  });
+  sel.innerHTML = h;
+  if (senarai.length) {
+    if (!sel.value) sel.value = senarai[0].n;
+    muatJadualIsi();
+  } else {
+    document.getElementById("tIsi").innerHTML = "";
+    st("stIsi", PERANAN === "guru"
+      ? "Tiada subjek ditugaskan kepada anda untuk kelas ini."
+      : "Tiada mata pelajaran dipilih untuk kelas ini dalam Urus Peperiksaan.", "err");
+  }
+}
+function muatJadualIsi() {
+  var kelas = document.getElementById("isiKelas").value;
+  var subjek = document.getElementById("isiSubjek").value;
+  if (!kelas || !subjek) return;
+  if (!KELAS_CACHE[kelas] || !Array.isArray(KELAS_CACHE[kelas].murid)) {
+    st("stIsi", "❌ Senarai murid belum tersedia. Sila pilih semula kelas.", "err");
+    return;
+  }
+  st("stIsi", "⏳ Memuat markah sedia ada...", "loading");
+  google.script.run.withSuccessHandler(function (peta) {
+    stTutup("stIsi");
+    binaJadualIsi(kelas, subjek, peta || {});
+  }).withFailureHandler(function (e) {
+    st("stIsi", "❌ Gagal memuat markah: " + (e && e.message ? e.message : e), "err");
+  }).apiMarkah(peperiksaanIsi(), kelas);
+}
+</script>
+
+<script>
+/* Fallback konfigurasi peperiksaan kosong: paparkan kelas dan subjek sedia ada. */
+function kelasSertai(cfg) {
+  var kelas = cfg && Array.isArray(cfg.kelas) ? cfg.kelas.filter(Boolean) : [];
+  return kelas.length ? kelas : (Array.isArray(INIT.kelas) ? INIT.kelas : []);
+}
+function subjekSertai(cfg, kelas) {
+  var dipilih = cfg && cfg.konfigurasi && Array.isArray(cfg.konfigurasi[kelas]) ? cfg.konfigurasi[kelas].filter(Boolean) : [];
+  if (dipilih.length) return dipilih;
+  var dataKelas = KELAS_CACHE && KELAS_CACHE[kelas];
+  return dataKelas && Array.isArray(dataKelas.subjek) ? dataKelas.subjek.map(function(s) { return s.n; }) : [];
+}
+</script>
