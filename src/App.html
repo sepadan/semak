@@ -745,6 +745,7 @@ function mula(d) {
 function segarkanInit(cb) {
   google.script.run.withSuccessHandler(function (d) {
     INIT = d;
+    KELAS_CACHE = {};
     document.getElementById("hSekolah").textContent = d.sekolah;
     paparLogoHeader();
     isiDropdownPeperiksaan();
@@ -999,7 +1000,7 @@ function muatIsi() {
     isiSubjekDropdown(kelas);
   }).withFailureHandler(function (e) {
     st("stIsi", "❌ " + e.message, "err");
-  }).apiKelas(kelas);
+  }).apiKelas(kelas, peperiksaanIsi());
 }
 
 function isiSubjekDropdown(kelas) {
@@ -1515,11 +1516,13 @@ function muatTetapan() {
   if (INIT.logo) { lp.src = INIT.logo; lp.style.display = "inline-block"; bp.style.display = "inline-block"; }
   else { lp.style.display = "none"; bp.style.display = "none"; }
   // Dropdown peperiksaan
+  var tetPep = document.getElementById("tetPep");
+  var pepSemasa = tetPep.value || INIT.aktif || "";
   var h = "";
   INIT.peperiksaan.forEach(function (p) {
-    h += '<option value="' + p.nama + '">' + p.nama + (p.kunci ? " 🔒" : "") + '</option>';
+    h += '<option value="' + p.nama + '"' + (p.nama === pepSemasa ? " selected" : "") + '>' + p.nama + (p.kunci ? " 🔒" : "") + '</option>';
   });
-  document.getElementById("tetPep").innerHTML = h;
+  tetPep.innerHTML = h;
   var hAktif = '<option value="">-- Tiada peperiksaan aktif (tutup pengisian) --</option>';
   INIT.peperiksaan.forEach(function (p) {
     hAktif += '<option value="' + p.nama + '"' + (p.nama === INIT.aktif ? " selected" : "") + '>' + p.nama + '</option>';
@@ -1898,7 +1901,7 @@ function muatIsi() {
     isiSubjekDropdown(kelas);
   }).withFailureHandler(function (e) {
     st("stIsi", "❌ Gagal memuat senarai murid: " + (e && e.message ? e.message : e), "err");
-  }).apiKelas(kelas);
+  }).apiKelas(kelas, peperiksaanIsi());
 }
 function isiSubjekDropdown(kelas) {
   var d = KELAS_CACHE[kelas];
