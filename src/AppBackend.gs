@@ -104,8 +104,9 @@ function apiLoginGuru(nama, kata) {
 // API: MURID & SUBJEK UNTUK SATU KELAS
 // ════════════════════════════════════════════════════════════════
 
-function apiKelas(namaKelas) {
-  var muridKelas = getMuridSemua().filter(function (m) {
+function apiKelas(namaKelas, peperiksaan) {
+  var sumberMurid = peperiksaan ? getMuridPeperiksaan(peperiksaan) : getMuridSemua();
+  var muridKelas = sumberMurid.filter(function (m) {
     return m.kelas === namaKelas;
   });
   var subjekList = subjekUntukKelas(namaKelas, muridKelas);
@@ -259,7 +260,7 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
 // ════════════════════════════════════════════════════════════════
 
 function apiStatus(peperiksaan) {
-  var murid = getMuridSemua();
+  var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
 
   var cfg = null;
@@ -326,7 +327,7 @@ function apiStatus(peperiksaan) {
 
 function apiAnalisis(peperiksaan) {
   var t     = getTetapan();
-  var murid = getMuridSemua();
+  var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
 
   var cfg = null;
@@ -610,6 +611,7 @@ function apiPadamPeperiksaan(nama, buatBackupDulu, kata) {
 
       // 3) Keluarkan dari senarai peperiksaan
       sP.deleteRow(barisJumpa);
+      padamCalonPeperiksaan(nama);
 
       // 4) Kosongkan peperiksaan aktif jika ia yang dipadam
       var sTetapan = ss.getSheetByName(SH_TETAPAN);
@@ -848,6 +850,7 @@ function apiUploadMurid(senarai, kata) {
     var lastRow = sMu.getLastRow();
     if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
     sMu.getRange(2, 1, baris.length, 6).setValues(baris);
+    segerakCalonPeperiksaanAktif();
 
     return { ok: true, mesej: baris.length + " murid dimuat naik. " +
              "Senarai murid lama digantikan sepenuhnya." };
@@ -1118,6 +1121,7 @@ function apiTetapkanAktif(nama, kata) {
       if (!wujud) return { ok: false, mesej: "Peperiksaan dipilih tidak ditemui." };
     }
     sT.getRange("B4").setValue(nama);
+    if (nama) pastikanSnapshotCalonPeperiksaan(nama);
     return { ok: true, mesej: nama
       ? "'" + nama + "' kini peperiksaan aktif untuk pengisian markah."
       : "Tiada peperiksaan aktif. Pengisian markah ditutup." };
@@ -1330,8 +1334,9 @@ function apiLoginGuru(nama, kata) {
 // API: MURID & SUBJEK UNTUK SATU KELAS
 // ════════════════════════════════════════════════════════════════
 
-function apiKelas(namaKelas) {
-  var muridKelas = getMuridSemua().filter(function (m) {
+function apiKelas(namaKelas, peperiksaan) {
+  var sumberMurid = peperiksaan ? getMuridPeperiksaan(peperiksaan) : getMuridSemua();
+  var muridKelas = sumberMurid.filter(function (m) {
     return m.kelas === namaKelas;
   });
   var subjekList = subjekUntukKelas(namaKelas, muridKelas);
@@ -1485,7 +1490,7 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
 // ════════════════════════════════════════════════════════════════
 
 function apiStatus(peperiksaan) {
-  var murid = getMuridSemua();
+  var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
 
   var cfg = null;
@@ -1552,7 +1557,7 @@ function apiStatus(peperiksaan) {
 
 function apiAnalisis(peperiksaan) {
   var t     = getTetapan();
-  var murid = getMuridSemua();
+  var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
 
   var cfg = null;
@@ -1836,6 +1841,7 @@ function apiPadamPeperiksaan(nama, buatBackupDulu, kata) {
 
       // 3) Keluarkan dari senarai peperiksaan
       sP.deleteRow(barisJumpa);
+      padamCalonPeperiksaan(nama);
 
       // 4) Kosongkan peperiksaan aktif jika ia yang dipadam
       var sTetapan = ss.getSheetByName(SH_TETAPAN);
@@ -2074,6 +2080,7 @@ function apiUploadMurid(senarai, kata) {
     var lastRow = sMu.getLastRow();
     if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
     sMu.getRange(2, 1, baris.length, 6).setValues(baris);
+    segerakCalonPeperiksaanAktif();
 
     return { ok: true, mesej: baris.length + " murid dimuat naik. " +
              "Senarai murid lama digantikan sepenuhnya." };
@@ -2344,6 +2351,7 @@ function apiTetapkanAktif(nama, kata) {
       if (!wujud) return { ok: false, mesej: "Peperiksaan dipilih tidak ditemui." };
     }
     sT.getRange("B4").setValue(nama);
+    if (nama) pastikanSnapshotCalonPeperiksaan(nama);
     return { ok: true, mesej: nama
       ? "'" + nama + "' kini peperiksaan aktif untuk pengisian markah."
       : "Tiada peperiksaan aktif. Pengisian markah ditutup." };
