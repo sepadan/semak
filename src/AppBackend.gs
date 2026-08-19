@@ -1191,7 +1191,8 @@ function doPost(e) {
       apiTambahKelas: apiTambahKelas,
       apiTambahPeperiksaan: apiTambahPeperiksaan,
       apiTambahSubjek: apiTambahSubjek,
-      apiTetapkanAktif: apiTetapkanAktif
+      apiTetapkanAktif: apiTetapkanAktif,
+      apiUploadMurid: apiUploadMurid
     };
 
     if (!Object.prototype.hasOwnProperty.call(dibenarkan, kaedah)) {
