@@ -339,9 +339,9 @@ Tiada nama murid, IC atau markah individu boleh dieksport ke repo dashboard awam
   `App.html` lulus selepas pengoptimuman.
 - Apps Script berjaya dikemas kini sebagai deployment versi 49 menggunakan
   deployment ID dan URL sedia ada.
-- Ujian GitHub Pages versi 49: muatan pertama sehingga dashboard tersedia kira-
-  kira 16.0 saat; refresh tab yang sama memaparkan cache dashboard dalam kira-
-  kira 0.5 saat sambil data langsung disegarkan di latar.
+- Ujian akhir URL utama GitHub Pages versi 49: muatan pertama sehingga dashboard
+  tersedia kira-kira 13.6 saat; refresh tab yang sama memaparkan cache dashboard
+  dalam kira-kira 0.7 saat sambil data langsung disegarkan di latar.
 - Spreadsheet mempunyai 26 tab dan kira-kira 979,934 sel diperuntukkan, iaitu
   9.8% daripada had 10 juta sel.
 - `MARKAH` mempunyai 8,538 baris maksimum dan baris terakhir digunakan. Kod kini
@@ -397,7 +397,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
-| 2026-08-21 | `HEAD` | 49 | Ringankan `apiInit`, bacaan tetapan dan snapshot calon; tambah paparan segera daripada cache tab sambil segar semula di latar; versi bingkai GitHub untuk elak frontend lama | Sintaks empat fail lulus; muatan pertama 16.0s, refresh cache 0.5s; deployment 49 berjaya pada ID sama | Tiada |
+| 2026-08-21 | `HEAD` | 49 | Ringankan `apiInit`, bacaan tetapan dan snapshot calon; tambah paparan segera daripada cache tab sambil segar semula di latar; versi bingkai GitHub untuk elak frontend lama | Sintaks empat fail lulus; ujian akhir URL utama: muatan pertama 13.6s, refresh cache 0.7s; deployment 49 berjaya pada ID sama | Tiada |
 | 2026-08-21 | `cfc8380` | 48 | Ganti sesi Cache sahaja dengan ScriptProperties + Cache, tambah `apiLogout` | 22/22 login dan sesi; 19/19 guru bertugasan lulus kebenaran simpan | Tiada |
 | 2026-08-21 | `8b77198` | 47/48 | Tambah baris `MARKAH` secara automatik sebelum `setValues` | Metadata mengesahkan baris 8,538 telah digunakan | Tiada |
 | 2026-08-21 | `d41f037` | 47/48 | Heartbeat sesi, login semula tanpa hilang markah ditaip | Sintaks dan simulasi sesi lulus | Tiada |
