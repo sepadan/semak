@@ -20,8 +20,8 @@ dipapar sebagai Web App. Dibangunkan untuk **SK Paya Redan**.
 | ⚙️ Tetapan | Identiti sekolah, peperiksaan, tugasan guru, subjek, kelas, muat naik CSV murid |
 
 **Peranan:** Admin (akses penuh) dan Guru (hanya kelas + subjek yang ditugaskan).
-Sesi disahkan melalui token rawak 6 jam dalam `CacheService` — kata laluan
-tidak disimpan dalam pelayar.
+Sesi disahkan melalui token rawak 6 jam dalam `ScriptProperties`, dengan
+`CacheService` sebagai laluan pantas — kata laluan tidak disimpan dalam pelayar.
 
 ---
 
@@ -29,12 +29,15 @@ tidak disimpan dalam pelayar.
 
 ```
 semak/
+├─ AGENTS.md               # arahkan ChatGPT/Codex kepada blueprint utama
+├─ CLAUDE.md               # arahkan Claude kepada blueprint utama
 ├─ src/                     # kod yang di-push ke Apps Script (rootDir clasp)
 │  ├─ Code.gs               # teras: konfigurasi, akses data, pemasangan, backup
 │  ├─ AppBackend.gs         # API web app (api*) + kawalan akses
 │  ├─ App.html              # antara muka penuh (HTML + CSS + JS)
 │  └─ appsscript.json       # manifes projek
 ├─ docs/
+│  ├─ SEMAK-Blueprint.md    # rujukan utama untuk AI/pembangun + rekod perubahan
 │  ├─ struktur-sheet.md     # skema setiap sheet pangkalan data
 │  └─ panduan-pemasangan.md # panduan langkah demi langkah (GitHub + Apps Script)
 ├─ .clasp.json.example      # salin ke .clasp.json dan isi scriptId anda
@@ -42,6 +45,10 @@ semak/
 ├─ LICENSE
 └─ README.md
 ```
+
+> **Menyambung kerja dengan ChatGPT atau Claude?** Baca
+> [`docs/SEMAK-Blueprint.md`](docs/SEMAK-Blueprint.md) dahulu. Setiap perubahan
+> fungsi mesti mengemas kini blueprint itu dalam commit yang sama.
 
 ---
 
@@ -119,7 +126,8 @@ Perkara yang perlu diketahui:
   `TETAPAN` dan `GURU`. Kedua-dua sheet disembunyikan semasa pemasangan,
   tetapi sesiapa yang ada akses edit pada spreadsheet boleh melihatnya.
   **Jangan kongsi spreadsheet dengan sesiapa yang tidak sepatutnya jadi admin.**
-- Token sesi tamat selepas 6 jam dan disimpan dalam `sessionStorage`.
+- Token sesi tamat selepas 6 jam, disimpan di backend melalui
+  `ScriptProperties` + cache, dan disimpan dalam `sessionStorage` pelayar.
 - `apiInit`, `apiKelas`, `apiMarkah`, `apiStatus`, `apiAnalisis` tidak
   memerlukan login — sesiapa yang ada URL web app boleh melihat markah.
   Hadkan akses deployment jika ini tidak diingini.

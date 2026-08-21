@@ -237,13 +237,17 @@ berisiko menambah rekod markah berganda.
 Setiap kali kod berubah, kemas kini **kedua-dua tempat**. Urutan yang betul:
 
 ```
-1. Ubah kod dalam folder semak di komputer
+1. Baca dan kemas kini docs/SEMAK-Blueprint.md
         ↓
-2. Simpan ke GitHub          ← rekod perubahan
+2. Ubah kod dalam folder semak di komputer
         ↓
-3. Tampal ke Apps Script     ← sistem berubah
+3. Uji kod dan pastikan data sebenar tidak berubah
         ↓
-4. Deploy versi baharu       ← guru nampak perubahan
+4. Simpan kod + blueprint ke GitHub
+        ↓
+5. Tampal versi sama ke Apps Script
+        ↓
+6. Deploy versi baharu pada deployment sedia ada
 ```
 
 **Langkah 2 dalam Git Bash** (klik kanan dalam folder `semak` → Open Git Bash here):
