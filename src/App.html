@@ -754,6 +754,7 @@ function pulihSesiPelayar() {
     kemasKiniPeranan();
     mulaPemantauanSesi();
     praMuatStatus();
+    praMuatIsi();
   }).apiSemakSesi(simpanan.sesi);
 }
 
@@ -1015,6 +1016,7 @@ function loginGuru() {
       document.getElementById("mGuruKata").value = "";
       simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan(loginSemula); mulaPemantauanSesi();
       praMuatStatus();
+      praMuatIsi();
       if (loginSemula)
         st("stIsi", "✅ Login semula berjaya. Markah yang ditaip masih ada. Tekan Simpan Markah sekali lagi.", "ok");
     } else st("stLogin", "❌ Kata laluan salah.", "err");
@@ -1037,6 +1039,7 @@ function loginAdmin() {
       PERANAN = "admin"; KATA = r.sesi; GURU_AKTIF = "";
       simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan(loginSemula); mulaPemantauanSesi();
       praMuatStatus();
+      praMuatIsi();
       if (loginSemula)
         st("stIsi", "✅ Login semula berjaya. Markah yang ditaip masih ada. Tekan Simpan Markah sekali lagi.", "ok");
     } else st("stLogin", "❌ Kata laluan salah.", "err");
@@ -1146,6 +1149,7 @@ function tukarPeperiksaan() {
   isiDropdownKelasCetak();
   muatDash(); // analisis dimuat semula automatik ikut peperiksaan dipilih
   praMuatStatus();
+  praMuatIsi();
 }
 
 function tambahPeperiksaanDropdown(nama) {
@@ -1221,6 +1225,45 @@ function muatIsiPantas() {
       gagal = true;
       st("stIsi", "❌ Gagal memuat markah: " + (e && e.message ? e.message : e), "err");
     }).apiMarkah(peperiksaan, kelas);
+  }
+}
+
+// Pramuat kelas pertama yang benar-benar mempunyai subjek untuk pengguna.
+// Bacaan berlaku selepas login supaya jadual biasanya sedia sebelum tab dibuka.
+function praMuatIsi() {
+  if (!PERANAN || !INIT || !peperiksaanIsi()) return;
+  var peperiksaan = peperiksaanIsi();
+  var cfg = configIsi();
+  var kelasCalon = kelasSertai(cfg).slice();
+  var kelas = "";
+
+  for (var i = 0; i < kelasCalon.length; i++) {
+    var namaKelas = kelasCalon[i];
+    if (PERANAN === "admin") { kelas = namaKelas; break; }
+    var dibenarkan = subjekSertai(cfg, namaKelas) || [];
+    var adaTugasan = (INIT.tugasan || []).some(function (t) {
+      return t.guru === GURU_AKTIF && t.kelas === namaKelas &&
+        dibenarkan.indexOf(t.subjek) > -1;
+    });
+    if (adaTugasan) { kelas = namaKelas; break; }
+  }
+  if (!kelas) return;
+
+  pastikanCacheIsiPeperiksaan(peperiksaan);
+  var kunci = kunciMarkahCache(peperiksaan, kelas);
+  if (!KELAS_CACHE[kelas]) {
+    google.script.run.withSuccessHandler(function (d) {
+      if (PEPERIKSAAN_CACHE_ISI !== peperiksaan || !d || !Array.isArray(d.murid)) return;
+      KELAS_CACHE[kelas] = d;
+      simpanCacheDataPantas();
+    }).withFailureHandler(function () {}).apiKelas(kelas, peperiksaan);
+  }
+  if (!Object.prototype.hasOwnProperty.call(MARKAH_CACHE, kunci)) {
+    google.script.run.withSuccessHandler(function (peta) {
+      if (PEPERIKSAAN_CACHE_ISI !== peperiksaan) return;
+      MARKAH_CACHE[kunci] = peta || {};
+      simpanCacheDataPantas();
+    }).withFailureHandler(function () {}).apiMarkah(peperiksaan, kelas);
   }
 }
 

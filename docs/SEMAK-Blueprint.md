@@ -11,7 +11,7 @@
 | Sistem | SEMAK - Sistem Markah SK Paya Redan |
 | Tarikh disahkan | 21 Ogos 2026 |
 | Commit kod fungsi terkini | `HEAD` - Cache berlapis dan muatan selari seluruh sistem |
-| Deployment Apps Script | Versi 51 |
+| Deployment Apps Script | Versi 52 |
 | Deployment ID | `AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H` |
 | URL pengguna | <https://sepadan.github.io/semak/> |
 | URL API | <https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec> |
@@ -86,7 +86,7 @@ diganti.
   `sessionStorage`. Ketika refresh tab yang sama, paparan itu digunakan dahulu
   dan data langsung disegarkan di latar. Cache ini hilang apabila tab/browser
   ditutup dan tidak menggantikan Google Sheets sebagai sumber data sebenar.
-- `index.html` menambah nombor versi pada `src/App.html` (contoh `?v=51`) supaya
+- `index.html` menambah nombor versi pada `src/App.html` (contoh `?v=52`) supaya
   pelayar tidak terus menggunakan frontend lama selepas deployment baharu.
 - Cache paparan hanya untuk kelajuan dan tidak digunakan bagi pengesahan sesi,
   kebenaran menyimpan atau sebarang operasi tulis.
@@ -99,6 +99,8 @@ diganti.
 - Isi Markah meminta senarai murid dan peta markah kelas secara selari. Peta
   markah satu kelas diguna semula apabila guru menukar subjek dan disimpan dalam
   `sessionStorage` untuk refresh tab yang sama.
+- Selepas login, kelas pertama yang mempunyai tugasan sah untuk guru (atau kelas
+  pertama untuk admin) dipramuat bersama markahnya di latar.
 - Status Pengisian dipramuat selepas sesi guru/admin disahkan. Apabila tab Status
   dibuka, cache dipaparkan segera sementara salinan terkini disegarkan di latar.
 - `apiMula()` menggabungkan data permulaan dan analisis dalam satu RPC. Ini
@@ -360,6 +362,9 @@ Tiada nama murid, IC atau markah individu boleh dieksport ke repo dashboard awam
   Isi Markah dan Status dicatat selepas GitHub Pages menerima frontend v50.
 - Deployment 51 menambah `apiMula()` pada senarai putih GitHub dan berjaya
   diterbitkan pada deployment ID yang sama.
+- Ujian API langsung selepas cache tersedia: `apiMula` 1.6-1.7s, `apiKelas`
+  1.3s, `apiMarkah` 1.2s dan `apiStatus` 1.1s. Bacaan pertama Status ialah 4.6s;
+  kelas pertama 5.3s lalu ditutup dengan pramuat selepas login dalam versi 52.
 - Spreadsheet mempunyai 26 tab dan kira-kira 979,934 sel diperuntukkan, iaitu
   9.8% daripada had 10 juta sel.
 - `MARKAH` mempunyai 8,538 baris maksimum dan baris terakhir digunakan. Kod kini
@@ -415,6 +420,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
+| 2026-08-21 | `HEAD` | 52 | Pramuat kelas bertugasan pertama dan markahnya selepas login supaya kelewatan bacaan pertama berlaku di latar | API cache: mula 1.6-1.7s, kelas 1.3s, markah 1.2s, status 1.1s; deployment 52 pada ID sama | Tiada |
 | 2026-08-21 | `HEAD` | 51 | Gabungkan `apiInit` dan analisis dalam satu RPC `apiMula` untuk membuang muatan rangkaian berturutan | Sintaks lulus; deployment 51 pada ID sama | Tiada |
 | 2026-08-21 | `HEAD` | 50 | Cache data pelayan berasaskan revisi, muatan kelas+markah selari, guna semula markah antara subjek, cache tab dan pramuat Status Pengisian | Sintaks backend/frontend lulus; deployment 50 pada ID sama | Tiada |
 | 2026-08-21 | `HEAD` | 49 | Ringankan `apiInit`, bacaan tetapan dan snapshot calon; tambah paparan segera daripada cache tab sambil segar semula di latar; versi bingkai GitHub untuk elak frontend lama | Sintaks empat fail lulus; ujian akhir URL utama: muatan pertama 13.6s, refresh cache 0.7s; deployment 49 berjaya pada ID sama | Tiada |
