@@ -155,8 +155,7 @@ function _analisisSementaraMula(init, peperiksaan) {
     ringkas: true,
     sementara: true,
     kelas: namaKelas.map(function (nama) {
-      var info = null;
-      (init.kelasInfo || []).forEach(function (k) { if (k.nama === nama) info = k; });
+      var info = init.kelasInfo && init.kelasInfo[nama] ? init.kelasInfo[nama] : null;
       return {
         nama: nama,
         tahap1: info ? !!info.tahap1 : isTahap1Kelas(nama),
@@ -1593,8 +1592,7 @@ function _analisisSementaraMula(init, peperiksaan) {
     ringkas: true,
     sementara: true,
     kelas: namaKelas.map(function (nama) {
-      var info = null;
-      (init.kelasInfo || []).forEach(function (k) { if (k.nama === nama) info = k; });
+      var info = init.kelasInfo && init.kelasInfo[nama] ? init.kelasInfo[nama] : null;
       return {
         nama: nama,
         tahap1: info ? !!info.tahap1 : isTahap1Kelas(nama),
