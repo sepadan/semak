@@ -86,7 +86,7 @@ diganti.
   `sessionStorage`. Ketika refresh tab yang sama, paparan itu digunakan dahulu
   dan data langsung disegarkan di latar. Cache ini hilang apabila tab/browser
   ditutup dan tidak menggantikan Google Sheets sebagai sumber data sebenar.
-- `index.html` menambah nombor versi pada `src/App.html` (contoh `?v=57`) supaya
+- `index.html` menambah nombor versi pada `src/App.html` (contoh `?v=58`) supaya
   pelayar tidak terus menggunakan frontend lama selepas deployment baharu.
 - Cache paparan hanya untuk kelajuan dan tidak digunakan bagi pengesahan sesi,
   kebenaran menyimpan atau sebarang operasi tulis.
@@ -367,7 +367,7 @@ Tiada nama murid, IC atau markah individu boleh dieksport ke repo dashboard awam
 - Angka ujian API langsung yang pernah dicatat untuk versi 51/52 ditarik balik:
   alat ujian menggunakan nama medan POST yang salah dan tidak benar-benar memanggil
   fungsi RPC. Prestasi selepas versi 53 mesti dinilai melalui UI GitHub Pages.
-- Deployment 57 mengecilkan muatan awal kepada ringkasan dashboard, melengkapkan
+- Deployment 58 mengecilkan muatan awal kepada ringkasan dashboard, melengkapkan
   analisis murid di latar, dan menggabungkan senarai kelas serta markah ke dalam
   satu RPC `apiIsiKelas`. Analisis awal turut menyediakan cache semua kelas dan
   Status supaya kedua-dua paparan tidak membaca Sheets semula selepas login.
@@ -428,7 +428,8 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
-| 2026-08-21 | `HEAD` | 57 | Muat Chart.js secara async supaya data tidak menunggu carta; kekalkan ringkasan awal dan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s | Tiada |
+| 2026-08-21 | `HEAD` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s | Tiada |
+| 2026-08-21 | `da635ab` | 57 | Muat Chart.js secara async supaya data tidak menunggu carta | Ujian UI mengesan rujukan `d.ringkas` tidak sah; diperbetul segera dalam v58 | Tiada |
 | 2026-08-21 | `c1f9ad0` | 56 | Betulkan `kelasInfo` objek dalam ringkasan sementara | Ujian UI GitHub: 6.7s; dikenal pasti Chart.js menyekat paparan dan diperbaiki dalam v57 | Tiada |
 | 2026-08-21 | `785878b` | 55 | Alih analisis penuh keluar daripada laluan skrin pertama | Ujian live mengesan bentuk `kelasInfo` tidak serasi; diperbetul segera dalam v56 sebelum digunakan | Tiada |
 | 2026-08-21 | `deddb2d` | 54 | Sediakan cache semua kelas+Status ketika analisis awal | API selepas pemanasan: Isi Markah 1.63s, Status 1.31s; kerja analisis dialih keluar daripada laluan skrin pertama dalam v55 | Tiada |
