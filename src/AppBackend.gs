@@ -75,10 +75,9 @@ function apiLogout(token) {
 function apiInit() {
   var t     = getTetapan();
   var murid = getMuridSemua();
-  isiICMarkahDaripadaMurid(murid);
 
   // Kesatuan kelas dari MURID + kelas manual dari sheet KELAS
-  var kelasUnik = getKelasSemua();
+  var kelasUnik = getKelasSemua(murid);
 
   // Info setiap kelas: tahap1 & ada murid bukan Islam (untuk matriks tugasan)
   var kelasInfo = {};
@@ -1354,10 +1353,9 @@ function apiLogout(token) {
 function apiInit() {
   var t     = getTetapan();
   var murid = getMuridSemua();
-  isiICMarkahDaripadaMurid(murid);
 
   // Kesatuan kelas dari MURID + kelas manual dari sheet KELAS
-  var kelasUnik = getKelasSemua();
+  var kelasUnik = getKelasSemua(murid);
 
   // Info setiap kelas: tahap1 & ada murid bukan Islam (untuk matriks tugasan)
   var kelasInfo = {};

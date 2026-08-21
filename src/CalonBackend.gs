@@ -22,10 +22,14 @@ function _kunciCalon(m) {
     _teksCalon(m.nama).toUpperCase();
 }
 
-function _sheetCalonPeperiksaan() {
+function _sheetCalonPeperiksaan(cipta) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var s = ss.getSheetByName(SH_CALON_PEPERIKSAAN);
+  if (!s && cipta === false) return null;
   if (!s) s = ss.insertSheet(SH_CALON_PEPERIKSAAN);
+
+  // Laluan bacaan biasa tidak perlu mengubah freeze/hide/header setiap kali.
+  if (cipta === false) return s;
 
   var tajuk = ["PEPERIKSAAN", "IC/MYKAD", "NAMA", "JANTINA", "KELAS", "TAHUN", "AGAMA", "JENIS_REKOD"];
   if (s.getLastRow() === 0) s.getRange(1, 1, 1, tajuk.length).setValues([tajuk]);
@@ -37,8 +41,8 @@ function _sheetCalonPeperiksaan() {
 }
 
 function _barisCalonDalamSheet() {
-  var s = _sheetCalonPeperiksaan();
-  if (s.getLastRow() < 2) return [];
+  var s = _sheetCalonPeperiksaan(false);
+  if (!s || s.getLastRow() < 2) return [];
   return s.getRange(2, 1, s.getLastRow() - 1, 8).getValues();
 }
 
@@ -138,8 +142,15 @@ function getMuridPeperiksaan(peperiksaan) {
   peperiksaan = _teksCalon(peperiksaan);
   if (!peperiksaan) return getMuridSemua();
 
-  migrasiCalonPeperiksaanSekali();
   var baris = _barisCalonDalamSheet();
+  var migrasiSelesai = baris.some(function (r) {
+    return _teksCalon(r[0]) === PENANDA_MIGRASI_CALON &&
+      _teksCalon(r[7]) === REKOD_SNAPSHOT;
+  });
+  if (!migrasiSelesai) {
+    migrasiCalonPeperiksaanSekali();
+    baris = _barisCalonDalamSheet();
+  }
   if (!_adaSnapshotCalon(peperiksaan, baris)) return getMuridSemua();
 
   return baris.filter(function (r) {

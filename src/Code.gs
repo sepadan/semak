@@ -88,9 +88,9 @@ function getSubjekSemua() {
 
 // Senarai kelas SEBENAR: kesatuan kelas dari daftar MURID + kelas manual
 // yang ditambah admin dalam sheet KELAS (lajur A)
-function getKelasSemua() {
+function getKelasSemua(muridSedia) {
   var senarai = [];
-  getMuridSemua().forEach(function (m) {
+  (muridSedia || getMuridSemua()).forEach(function (m) {
     if (m.kelas && senarai.indexOf(m.kelas) === -1) senarai.push(m.kelas);
   });
   var sK = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_KELAS);
@@ -639,13 +639,15 @@ function getTetapan() {
   var t = { sekolah: NAMA_SEKOLAH_LALAI, tahun: TAHUN_LALAI,
             aktif: PEPERIKSAAN_LALAI, guruBesar: "" };
   if (!sT) return t;
-  t.sekolah = sT.getRange("B2").getValue() || t.sekolah;
-  t.tahun   = (sT.getRange("B3").getValue() || t.tahun).toString();
+  // Satu bacaan kelompok lebih pantas daripada lima panggilan berasingan.
+  var nilai = sT.getRange("B2:B7").getValues();
+  t.sekolah = nilai[0][0] || t.sekolah;
+  t.tahun   = (nilai[1][0] || t.tahun).toString();
   // Nilai kosong disengajakan untuk menutup sementara pengisian markah.
-  var aktif = sT.getRange("B4").getValue();
+  var aktif = nilai[2][0];
   t.aktif = (aktif === null || aktif === undefined) ? t.aktif : aktif.toString();
-  t.guruBesar = (sT.getRange("B6").getValue() || "").toString().trim();
-  t.logoId = (sT.getRange("B7").getValue() || "").toString().trim();
+  t.guruBesar = (nilai[4][0] || "").toString().trim();
+  t.logoId = (nilai[5][0] || "").toString().trim();
   return t;
 }
 

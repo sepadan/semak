@@ -695,6 +695,9 @@ var PERANAN = null, GURU_AKTIF = "", KATA = "";
 var PEPERIKSAAN_PADAM = "";
 var WARNA = { A:"#43a047", B:"#7cb342", C:"#fdd835", D:"#fb8c00", E:"#f06292", F:"#e53935", TH:"#9e9e9e" };
 var KUNCI_SESI = "sms_sesi_v1";
+var KUNCI_PAPARAN = "semak_paparan_v1";
+var TEMPOH_PAPARAN_MS = 30 * 60 * 1000;
+var ANTARAMUKA_DIMULAKAN = false;
 var TIMER_SESI = null;
 var LOGIN_SEMULA_SEDANG = false;
 var PERANAN_LOGIN_SEMULA = "", GURU_LOGIN_SEMULA = "";
@@ -769,12 +772,39 @@ document.addEventListener("visibilitychange", function () {
   if (!document.hidden && KATA) semakSesiAktif();
 });
 
-google.script.run.withSuccessHandler(mula)
+function bacaCachePaparan() {
+  try {
+    var cache = JSON.parse(sessionStorage.getItem(KUNCI_PAPARAN) || "null");
+    if (!cache || !cache.init || !cache.analisis ||
+        Date.now() - Number(cache.masa || 0) > TEMPOH_PAPARAN_MS) return null;
+    return cache;
+  } catch (e) { return null; }
+}
+
+function simpanCachePaparan() {
+  if (!INIT || !ANALISIS) return;
+  try {
+    sessionStorage.setItem(KUNCI_PAPARAN, JSON.stringify({
+      masa: Date.now(), init: INIT, analisis: ANALISIS
+    }));
+  } catch (e) {
+    // Jika storan peranti penuh, sistem terus berfungsi melalui data langsung.
+  }
+}
+
+var CACHE_PAPARAN = bacaCachePaparan();
+if (CACHE_PAPARAN) {
+  ANALISIS = CACHE_PAPARAN.analisis;
+  mula(CACHE_PAPARAN.init, true);
+}
+
+google.script.run.withSuccessHandler(function (d) { mula(d, false); })
   .withFailureHandler(function (e) {
-    document.getElementById("muat").innerHTML = "❌ Gagal memuat: " + e.message;
+    if (!CACHE_PAPARAN)
+      document.getElementById("muat").innerHTML = "❌ Gagal memuat: " + e.message;
   }).apiInit();
 
-function mula(d) {
+function mula(d, dariCache) {
   INIT = d;
   document.getElementById("hSekolah").textContent = d.sekolah;
   paparLogoHeader();
@@ -783,22 +813,30 @@ function mula(d) {
   document.getElementById("tabs").style.display = "flex";
   document.getElementById("kandungan").style.display = "block";
 
-  document.querySelectorAll(".tab").forEach(function (t) {
-    t.onclick = function () {
-      if (!t.classList.contains("papar")) return;
-      document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("aktif"); });
-      document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("aktif"); });
-      t.classList.add("aktif");
-      document.getElementById("p-" + t.dataset.p).classList.add("aktif");
-      if (t.dataset.p === "statuspg") muatStatus();
-      if (t.dataset.p === "tetapan") muatTetapan();
-      if (t.dataset.p === "tetguru") muatTetGuru();
-      if (t.dataset.p === "dash" && !ANALISIS) muatDash();
-    };
-  });
+  if (!ANTARAMUKA_DIMULAKAN) {
+    document.querySelectorAll(".tab").forEach(function (t) {
+      t.onclick = function () {
+        if (!t.classList.contains("papar")) return;
+        document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("aktif"); });
+        document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("aktif"); });
+        t.classList.add("aktif");
+        document.getElementById("p-" + t.dataset.p).classList.add("aktif");
+        if (t.dataset.p === "statuspg") muatStatus();
+        if (t.dataset.p === "tetapan") muatTetapan();
+        if (t.dataset.p === "tetguru") muatTetGuru();
+        if (t.dataset.p === "dash" && !ANALISIS) muatDash();
+      };
+    });
+    ANTARAMUKA_DIMULAKAN = true;
+    pulihSesiPelayar();
+  }
   kemasKiniPeranan();
-  pulihSesiPelayar();
-  muatDash(); // analisis dimuat automatik semasa buka
+  if (dariCache && ANALISIS) {
+    document.getElementById("dashIsi").style.display = "block";
+    paparDash();
+  } else {
+    muatDash(); // segarkan data sebenar di latar selepas paparan cache
+  }
 }
 
 function segarkanInit(cb) {
@@ -1282,6 +1320,7 @@ function muatDash() {
   st("stDash", "⏳ Menjana analisis...", "loading");
   google.script.run.withSuccessHandler(function (d) {
     ANALISIS = d;
+    simpanCachePaparan();
     stTutup("stDash");
     document.getElementById("dashIsi").style.display = "block";
     paparDash();

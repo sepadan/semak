@@ -10,8 +10,8 @@
 |---|---|
 | Sistem | SEMAK - Sistem Markah SK Paya Redan |
 | Tarikh disahkan | 21 Ogos 2026 |
-| Commit kod fungsi terkini | `cfc8380` - Simpan sesi secara stabil di Script Properties |
-| Deployment Apps Script | Versi 48 |
+| Commit kod fungsi terkini | `HEAD` - Percepat paparan awal dan refresh dalam tab yang sama |
+| Deployment Apps Script | Versi 49 |
 | Deployment ID | `AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H` |
 | URL pengguna | <https://sepadan.github.io/semak/> |
 | URL API | <https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec> |
@@ -70,6 +70,24 @@ tunggal. Apps Script ialah backend. GitHub Pages ialah paparan pengguna.
 `HUJUNG_API` ditulis dalam `src/App.html`. Jika deployment ID berubah, GitHub
 Pages akan gagal. Sebab itu deployment sedia ada mesti dikemas kini, bukan
 diganti.
+
+### Prestasi muatan awal
+
+- `apiInit()` ialah laluan baca sahaja. Ia tidak boleh menjalankan migrasi IC
+  untuk keseluruhan `MARKAH` setiap kali halaman dibuka. Pautan IC lama masih
+  dilakukan dalam aliran pemasangan, segerak atau muat naik murid sebelum daftar
+  murid diganti.
+- Senarai `MURID` yang sudah dibaca oleh `apiInit()` dihantar kepada
+  `getKelasSemua(murid)` supaya sheet yang sama tidak dibaca dua kali.
+- `getTetapan()` membaca `B2:B7` dalam satu operasi kelompok.
+- `getMuridPeperiksaan()` membaca snapshot calon sekali pada laluan biasa dan
+  hanya menjalankan migrasi jika penanda migrasi benar-benar belum wujud.
+- `INIT` dan analisis dashboard terakhir disimpan maksimum 30 minit dalam
+  `sessionStorage`. Ketika refresh tab yang sama, paparan itu digunakan dahulu
+  dan data langsung disegarkan di latar. Cache ini hilang apabila tab/browser
+  ditutup dan tidak menggantikan Google Sheets sebagai sumber data sebenar.
+- Cache paparan hanya untuk kelajuan dan tidak digunakan bagi pengesahan sesi,
+  kebenaran menyimpan atau sebarang operasi tulis.
 
 ## 4. Peta fail
 
@@ -313,6 +331,12 @@ Tiada nama murid, IC atau markah individu boleh dieksport ke repo dashboard awam
 
 ### Keputusan terakhir - 21 Ogos 2026
 
+- Sebelum pengoptimuman, ujian muatan pertama GitHub Pages mengambil kira-kira
+  23.0 saat sehingga dashboard tersedia.
+- Sintaks `Code.gs`, `AppBackend.gs`, `CalonBackend.gs` dan semua skrip dalaman
+  `App.html` lulus selepas pengoptimuman.
+- Apps Script berjaya dikemas kini sebagai deployment versi 49 menggunakan
+  deployment ID dan URL sedia ada.
 - Spreadsheet mempunyai 26 tab dan kira-kira 979,934 sel diperuntukkan, iaitu
   9.8% daripada had 10 juta sel.
 - `MARKAH` mempunyai 8,538 baris maksimum dan baris terakhir digunakan. Kod kini
@@ -368,6 +392,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
+| 2026-08-21 | `HEAD` | 49 | Ringankan `apiInit`, bacaan tetapan dan snapshot calon; tambah paparan segera daripada cache tab sambil segar semula di latar | Sintaks empat fail lulus; deployment 49 berjaya pada ID sama | Tiada |
 | 2026-08-21 | `cfc8380` | 48 | Ganti sesi Cache sahaja dengan ScriptProperties + Cache, tambah `apiLogout` | 22/22 login dan sesi; 19/19 guru bertugasan lulus kebenaran simpan | Tiada |
 | 2026-08-21 | `8b77198` | 47/48 | Tambah baris `MARKAH` secara automatik sebelum `setValues` | Metadata mengesahkan baris 8,538 telah digunakan | Tiada |
 | 2026-08-21 | `d41f037` | 47/48 | Heartbeat sesi, login semula tanpa hilang markah ditaip | Sintaks dan simulasi sesi lulus | Tiada |
