@@ -960,12 +960,16 @@ function loginAdmin() {
 }
 
 function logout() {
+  var tokenKeluar = KATA;
   PERANAN = null; GURU_AKTIF = ""; KATA = "";
   hentiPemantauanSesi();
   LOGIN_SEMULA_SEDANG = false;
   PERANAN_LOGIN_SEMULA = ""; GURU_LOGIN_SEMULA = "";
   buangSesiPelayar();
   kemasKiniPeranan();
+  if (tokenKeluar) {
+    google.script.run.withFailureHandler(function () {}).apiLogout(tokenKeluar);
+  }
 }
 
 function kemasKiniPeranan(peliharaIsiMarkah) {

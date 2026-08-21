@@ -19,20 +19,41 @@ var TEMPOH_SESI_SAAT = 21600;
 function _ciptaSesi(peranan, guru) {
   var token = Utilities.getUuid() + Utilities.getUuid();
   var data = { peranan: peranan, guru: guru || "" };
-  CacheService.getScriptCache().put("SESI_" + token, JSON.stringify(data), TEMPOH_SESI_SAAT);
+  _simpanSesi(token, data);
   return token;
+}
+
+function _simpanSesi(token, data) {
+  var kunci = "SESI_" + token;
+  data.luput = Date.now() + (TEMPOH_SESI_SAAT * 1000);
+  var mentah = JSON.stringify(data);
+  // ScriptProperties ialah stor utama kerana CacheService boleh membuang token
+  // lebih awal daripada tempoh yang diminta. Cache kekal sebagai laluan pantas.
+  PropertiesService.getScriptProperties().setProperty(kunci, mentah);
+  CacheService.getScriptCache().put(kunci, mentah, TEMPOH_SESI_SAAT);
+}
+
+function _padamSesi(token) {
+  if (!token) return;
+  var kunci = "SESI_" + token;
+  PropertiesService.getScriptProperties().deleteProperty(kunci);
+  CacheService.getScriptCache().remove(kunci);
 }
 
 function sahkanSesi(token) {
   if (!token) return null;
   var cache = CacheService.getScriptCache();
   var kunci = "SESI_" + token;
-  var mentah = cache.get(kunci);
+  var mentah = cache.get(kunci) || PropertiesService.getScriptProperties().getProperty(kunci);
   if (!mentah) return null;
   try {
     var sesi = JSON.parse(mentah);
+    if (sesi.luput && Number(sesi.luput) < Date.now()) {
+      _padamSesi(token);
+      return null;
+    }
     // Tempoh sesi bergerak: selagi tab masih digunakan, lanjutkan enam jam lagi.
-    cache.put(kunci, JSON.stringify(sesi), TEMPOH_SESI_SAAT);
+    _simpanSesi(token, sesi);
     return sesi;
   } catch (e) { return null; }
 }
@@ -40,6 +61,11 @@ function sahkanSesi(token) {
 function apiSemakSesi(token) {
   var sesi = sahkanSesi(token);
   return sesi ? { ok: true, peranan: sesi.peranan, guru: sesi.guru } : { ok: false };
+}
+
+function apiLogout(token) {
+  _padamSesi(token);
+  return { ok: true };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1184,6 +1210,7 @@ function doPost(e) {
       apiKelas: apiKelas,
       apiLoginAdmin: apiLoginAdmin,
       apiLoginGuru: apiLoginGuru,
+      apiLogout: apiLogout,
       apiMarkah: apiMarkah,
       apiPadamKelas: apiPadamKelas,
       apiPadamLogo: apiPadamLogo,
@@ -1271,20 +1298,41 @@ var TEMPOH_SESI_SAAT = 21600;
 function _ciptaSesi(peranan, guru) {
   var token = Utilities.getUuid() + Utilities.getUuid();
   var data = { peranan: peranan, guru: guru || "" };
-  CacheService.getScriptCache().put("SESI_" + token, JSON.stringify(data), TEMPOH_SESI_SAAT);
+  _simpanSesi(token, data);
   return token;
+}
+
+function _simpanSesi(token, data) {
+  var kunci = "SESI_" + token;
+  data.luput = Date.now() + (TEMPOH_SESI_SAAT * 1000);
+  var mentah = JSON.stringify(data);
+  // ScriptProperties ialah stor utama kerana CacheService boleh membuang token
+  // lebih awal daripada tempoh yang diminta. Cache kekal sebagai laluan pantas.
+  PropertiesService.getScriptProperties().setProperty(kunci, mentah);
+  CacheService.getScriptCache().put(kunci, mentah, TEMPOH_SESI_SAAT);
+}
+
+function _padamSesi(token) {
+  if (!token) return;
+  var kunci = "SESI_" + token;
+  PropertiesService.getScriptProperties().deleteProperty(kunci);
+  CacheService.getScriptCache().remove(kunci);
 }
 
 function sahkanSesi(token) {
   if (!token) return null;
   var cache = CacheService.getScriptCache();
   var kunci = "SESI_" + token;
-  var mentah = cache.get(kunci);
+  var mentah = cache.get(kunci) || PropertiesService.getScriptProperties().getProperty(kunci);
   if (!mentah) return null;
   try {
     var sesi = JSON.parse(mentah);
+    if (sesi.luput && Number(sesi.luput) < Date.now()) {
+      _padamSesi(token);
+      return null;
+    }
     // Tempoh sesi bergerak: selagi tab masih digunakan, lanjutkan enam jam lagi.
-    cache.put(kunci, JSON.stringify(sesi), TEMPOH_SESI_SAAT);
+    _simpanSesi(token, sesi);
     return sesi;
   } catch (e) { return null; }
 }
@@ -1292,6 +1340,11 @@ function sahkanSesi(token) {
 function apiSemakSesi(token) {
   var sesi = sahkanSesi(token);
   return sesi ? { ok: true, peranan: sesi.peranan, guru: sesi.guru } : { ok: false };
+}
+
+function apiLogout(token) {
+  _padamSesi(token);
+  return { ok: true };
 }
 
 // ════════════════════════════════════════════════════════════════
