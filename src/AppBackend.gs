@@ -249,6 +249,10 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
       });
 
       var semua = kekal.concat(baru);
+      var barisDiperlukan = semua.length + 1; // +1 untuk baris tajuk
+      if (sMk.getMaxRows() < barisDiperlukan) {
+        sMk.insertRowsAfter(sMk.getMaxRows(), barisDiperlukan - sMk.getMaxRows());
+      }
       if (lastRow > 1) sMk.getRange(2, 1, lastRow - 1, 9).clearContent();
       if (semua.length) sMk.getRange(2, 1, semua.length, 9).setValues(semua);
 
@@ -1497,6 +1501,10 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
       });
 
       var semua = kekal.concat(baru);
+      var barisDiperlukan = semua.length + 1; // +1 untuk baris tajuk
+      if (sMk.getMaxRows() < barisDiperlukan) {
+        sMk.insertRowsAfter(sMk.getMaxRows(), barisDiperlukan - sMk.getMaxRows());
+      }
       if (lastRow > 1) sMk.getRange(2, 1, lastRow - 1, 9).clearContent();
       if (semua.length) sMk.getRange(2, 1, semua.length, 9).setValues(semua);
 
