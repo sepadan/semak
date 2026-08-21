@@ -129,9 +129,46 @@ function apiMula() {
   var init = apiInit();
   var peperiksaan = init.aktif ||
     (init.peperiksaan && init.peperiksaan.length ? init.peperiksaan[0].nama : "");
-  var analisis = peperiksaan ? apiAnalisis(peperiksaan) : null;
-  var hasil = { init: init, analisis: _ringkaskanAnalisisMula(analisis) };
+  var analisis = peperiksaan ? bacaCacheData("ANALISIS", peperiksaan) : null;
+  var hasil = {
+    init: init,
+    analisis: analisis ? _ringkaskanAnalisisMula(analisis)
+                       : _analisisSementaraMula(init, peperiksaan)
+  };
   return simpanCacheData("MULA", "utama", hasil, 21600);
+}
+
+// Pada cache kosong, paparkan bilangan murid/kelas dahulu. Analisis markah penuh
+// berjalan di latar melalui App.html dan tidak lagi menghalang skrin pertama.
+function _analisisSementaraMula(init, peperiksaan) {
+  if (!peperiksaan) return null;
+  var cfg = null;
+  (init.peperiksaan || []).forEach(function (p) {
+    if (p.nama === peperiksaan) cfg = p;
+  });
+  var namaKelas = cfg && cfg.kelas && cfg.kelas.length ? cfg.kelas : (init.kelas || []);
+  return {
+    sekolah: init.sekolah,
+    tahun: init.tahun,
+    peperiksaan: peperiksaan,
+    dijana: "",
+    ringkas: true,
+    sementara: true,
+    kelas: namaKelas.map(function (nama) {
+      var info = null;
+      (init.kelasInfo || []).forEach(function (k) { if (k.nama === nama) info = k; });
+      return {
+        nama: nama,
+        tahap1: info ? !!info.tahap1 : isTahap1Kelas(nama),
+        subjek: [],
+        murid: [],
+        ringkasan: {
+          jumlahMurid: info ? Number(info.bilMurid || 0) : 0,
+          lelaki: 0, perempuan: 0, gpmp: null, pLulus: null, gredA: 0, th: 0
+        }
+      };
+    })
+  };
 }
 
 // Muatan awal hanya memerlukan angka dan ringkasan dashboard. Rekod murid penuh
@@ -1530,9 +1567,46 @@ function apiMula() {
   var init = apiInit();
   var peperiksaan = init.aktif ||
     (init.peperiksaan && init.peperiksaan.length ? init.peperiksaan[0].nama : "");
-  var analisis = peperiksaan ? apiAnalisis(peperiksaan) : null;
-  var hasil = { init: init, analisis: _ringkaskanAnalisisMula(analisis) };
+  var analisis = peperiksaan ? bacaCacheData("ANALISIS", peperiksaan) : null;
+  var hasil = {
+    init: init,
+    analisis: analisis ? _ringkaskanAnalisisMula(analisis)
+                       : _analisisSementaraMula(init, peperiksaan)
+  };
   return simpanCacheData("MULA", "utama", hasil, 21600);
+}
+
+// Pada cache kosong, paparkan bilangan murid/kelas dahulu. Analisis markah penuh
+// berjalan di latar melalui App.html dan tidak lagi menghalang skrin pertama.
+function _analisisSementaraMula(init, peperiksaan) {
+  if (!peperiksaan) return null;
+  var cfg = null;
+  (init.peperiksaan || []).forEach(function (p) {
+    if (p.nama === peperiksaan) cfg = p;
+  });
+  var namaKelas = cfg && cfg.kelas && cfg.kelas.length ? cfg.kelas : (init.kelas || []);
+  return {
+    sekolah: init.sekolah,
+    tahun: init.tahun,
+    peperiksaan: peperiksaan,
+    dijana: "",
+    ringkas: true,
+    sementara: true,
+    kelas: namaKelas.map(function (nama) {
+      var info = null;
+      (init.kelasInfo || []).forEach(function (k) { if (k.nama === nama) info = k; });
+      return {
+        nama: nama,
+        tahap1: info ? !!info.tahap1 : isTahap1Kelas(nama),
+        subjek: [],
+        murid: [],
+        ringkasan: {
+          jumlahMurid: info ? Number(info.bilMurid || 0) : 0,
+          lelaki: 0, perempuan: 0, gpmp: null, pLulus: null, gredA: 0, th: 0
+        }
+      };
+    })
+  };
 }
 
 // Muatan awal hanya memerlukan angka dan ringkasan dashboard. Rekod murid penuh

@@ -86,7 +86,7 @@ diganti.
   `sessionStorage`. Ketika refresh tab yang sama, paparan itu digunakan dahulu
   dan data langsung disegarkan di latar. Cache ini hilang apabila tab/browser
   ditutup dan tidak menggantikan Google Sheets sebagai sumber data sebenar.
-- `index.html` menambah nombor versi pada `src/App.html` (contoh `?v=54`) supaya
+- `index.html` menambah nombor versi pada `src/App.html` (contoh `?v=55`) supaya
   pelayar tidak terus menggunakan frontend lama selepas deployment baharu.
 - Cache paparan hanya untuk kelajuan dan tidak digunakan bagi pengesahan sesi,
   kebenaran menyimpan atau sebarang operasi tulis.
@@ -104,7 +104,9 @@ diganti.
 - Status Pengisian dipramuat selepas sesi guru/admin disahkan. Apabila tab Status
   dibuka, cache dipaparkan segera sementara salinan terkini disegarkan di latar.
 - `apiMula()` menghantar data permulaan bersama ringkasan analisis dalam satu RPC
-  kecil. Analisis murid penuh dilengkapkan di latar selepas dashboard muncul.
+  kecil. Jika cache analisis belum ada, ringkasan asas daripada `apiInit()`
+  dipaparkan dahulu; analisis murid penuh dilengkapkan di latar selepas dashboard
+  muncul dan serentak menyediakan cache Isi Markah serta Status.
 
 ## 4. Peta fail
 
@@ -365,7 +367,7 @@ Tiada nama murid, IC atau markah individu boleh dieksport ke repo dashboard awam
 - Angka ujian API langsung yang pernah dicatat untuk versi 51/52 ditarik balik:
   alat ujian menggunakan nama medan POST yang salah dan tidak benar-benar memanggil
   fungsi RPC. Prestasi selepas versi 53 mesti dinilai melalui UI GitHub Pages.
-- Deployment 54 mengecilkan muatan awal kepada ringkasan dashboard, melengkapkan
+- Deployment 55 mengecilkan muatan awal kepada ringkasan dashboard, melengkapkan
   analisis murid di latar, dan menggabungkan senarai kelas serta markah ke dalam
   satu RPC `apiIsiKelas`. Analisis awal turut menyediakan cache semua kelas dan
   Status supaya kedua-dua paparan tidak membaca Sheets semula selepas login.
@@ -424,7 +426,8 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
-| 2026-08-21 | `HEAD` | 54 | Ringkaskan respons awal, lengkapkan analisis penuh di latar, gabungkan data kelas+markah dalam satu `apiIsiKelas`, dan sediakan cache semua kelas+Status ketika analisis awal | Sintaks semua backend dan 5 skrip `App.html` lulus; ujian unit ringkasan+pakej Isi Markah lulus; deployment 54 pada ID sama | Tiada |
+| 2026-08-21 | `HEAD` | 55 | Paparkan ringkasan asas tanpa menunggu analisis pada cache kosong; analisis penuh di latar menyediakan cache semua kelas+Status | Sintaks semua backend dan 5 skrip `App.html` lulus; ujian unit ringkasan, pakej Isi Markah dan pemanasan cache Status lulus | Tiada |
+| 2026-08-21 | `deddb2d` | 54 | Sediakan cache semua kelas+Status ketika analisis awal | API selepas pemanasan: Isi Markah 1.63s, Status 1.31s; kerja analisis dialih keluar daripada laluan skrin pertama dalam v55 | Tiada |
 | 2026-08-21 | `94d3d1d` | 53 | Ringkaskan muatan awal dan gabungkan data kelas+markah | Dashboard GitHub Pages 2.9s; cache Isi Markah 1.35s; bacaan pertama mendorong pemanasan awal tambahan dalam v54 | Tiada |
 | 2026-08-21 | `920e68b` | 52 | Pramuat kelas bertugasan pertama dan markahnya selepas login supaya kelewatan bacaan pertama berlaku di latar | Sintaks lulus; deployment 52 pada ID sama. Angka API lama tidak sah dan tidak digunakan | Tiada |
 | 2026-08-21 | `HEAD` | 51 | Gabungkan `apiInit` dan analisis dalam satu RPC `apiMula` untuk membuang muatan rangkaian berturutan | Sintaks lulus; deployment 51 pada ID sama | Tiada |
