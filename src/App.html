@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SEMAK — Sistem Markah</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+        onload="if(window.lukisCartaTertunda)window.lukisCartaTertunda()"></script>
 <script>
 /*
  * Apabila App.html dibuka daripada GitHub Pages, google.script.run tidak wujud.
@@ -691,6 +692,7 @@
 var INIT = null, KELAS_CACHE = {}, MARKAH_CACHE = {}, STATUS_CACHE = {}, ANALISIS = null, charts = {};
 var STATUS_MENUNGGU = {};
 var ANALISIS_PENUH_MENUNGGU = false;
+var CARTA_TERTUNDA = {};
 var PEPERIKSAAN_CACHE_ISI = "";
 var GURU_SEMENTARA = [];
 var CSV_MURID_TAJUK = [], CSV_MURID_BARIS = [], CSV_MURID_BARIS_TAJUK = 0;
@@ -965,8 +967,18 @@ function st(id, msg, jenis) {
 function stTutup(id) { document.getElementById(id).style.display = "none"; }
 function fmt(v) { return (v === null || v === undefined || v === "") ? "-" : v; }
 function buatCarta(id, cfg) {
+  if (typeof Chart === "undefined") {
+    CARTA_TERTUNDA[id] = cfg;
+    return;
+  }
   if (charts[id]) charts[id].destroy();
   charts[id] = new Chart(document.getElementById(id), cfg);
+}
+function lukisCartaTertunda() {
+  if (typeof Chart === "undefined") return;
+  var tertunda = CARTA_TERTUNDA;
+  CARTA_TERTUNDA = {};
+  Object.keys(tertunda).forEach(function (id) { buatCarta(id, tertunda[id]); });
 }
 
 // ═══════════════ LOGIN ═══════════════
