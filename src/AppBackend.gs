@@ -453,6 +453,8 @@ function apiAnalisis(peperiksaan) {
 
   var mapG = { A: 1, B: 2, C: 3, D: 4, E: 5, F: 6 };
   var hasilKelas = [];
+  var tugasanStatus = getTugasanSemua();
+  var statusKelas = [];
 
   kelasUnik.forEach(function (k) {
     var muridKelas = murid.filter(function (m) { return m.kelas === k; });
@@ -462,6 +464,41 @@ function apiAnalisis(peperiksaan) {
       return subjekCfg.indexOf(s.n) > -1;
     });
     var tahap1 = isTahap1Kelas(k);
+
+    // Analisis sudah mempunyai calon, subjek dan markah bagi kelas ini. Sediakan
+    // terus cache Isi Markah dan Status supaya tab tersebut tidak membaca Sheets
+    // sekali lagi selepas pengguna login.
+    var markahKelas = peta[k] || {};
+    var kelasIsi = {
+      tahap1: tahap1,
+      subjek: subjekList.map(function (s) { return { n: s.n, w: s.w }; }),
+      murid: muridKelas.map(function (m, i) {
+        var ambil = {};
+        subjekList.forEach(function (s) { ambil[s.n] = muridAmbilSubjek(m, s.n); });
+        return { bil: i + 1, nama: m.nama, jantina: m.jantina, ic: m.ic, ambil: ambil };
+      })
+    };
+    simpanCacheData("ISI_KELAS", peperiksaan + "\u0001" + k, {
+      kelas: kelasIsi,
+      markah: markahKelas
+    }, 21600);
+
+    var statusBaris = { kelas: k, subjek: [] };
+    subjekList.forEach(function (s) {
+      var patut = 0, ada = 0, guru = "";
+      muridKelas.forEach(function (m) {
+        if (!muridAmbilSubjek(m, s.n)) return;
+        patut++;
+        var rekodMurid = markahKelas[m.ic] || markahKelas[m.nama] || {};
+        var rec = rekodMurid[s.n];
+        if (rec && rec.m !== "" && rec.m !== null) ada++;
+      });
+      tugasanStatus.forEach(function (tugasan) {
+        if (tugasan.kelas === k && tugasan.subjek === s.n) guru = tugasan.guru;
+      });
+      statusBaris.subjek.push({ n: s.n, ada: ada, patut: patut, guru: guru });
+    });
+    statusKelas.push(statusBaris);
 
     var muridHasil = muridKelas.map(function (m, idx) {
       var rekod = [];
@@ -544,6 +581,19 @@ function apiAnalisis(peperiksaan) {
     dijana: new Date().toLocaleString("ms-MY"),
     kelas: hasilKelas
   };
+  var semuaSubjekStatus = getSubjekSemua().map(function (s) { return s.n; });
+  if (cfg && (cfg.subjekT1 || cfg.subjekT2)) {
+    semuaSubjekStatus = semuaSubjekStatus.filter(function (s) {
+      var dlmT1 = !cfg.subjekT1 || cfg.subjekT1.indexOf(s) > -1;
+      var dlmT2 = !cfg.subjekT2 || cfg.subjekT2.indexOf(s) > -1;
+      return dlmT1 || dlmT2;
+    });
+  }
+  simpanCacheData("STATUS", peperiksaan || "", {
+    kelas: statusKelas,
+    semuaSubjek: semuaSubjekStatus,
+    kunci: cfg ? cfg.kunci : false
+  }, 21600);
   return simpanCacheData("ANALISIS", peperiksaan || "", hasilAnalisis, 21600);
 }
 
@@ -1804,6 +1854,8 @@ function apiAnalisis(peperiksaan) {
 
   var mapG = { A: 1, B: 2, C: 3, D: 4, E: 5, F: 6 };
   var hasilKelas = [];
+  var tugasanStatus = getTugasanSemua();
+  var statusKelas = [];
 
   kelasUnik.forEach(function (k) {
     var muridKelas = murid.filter(function (m) { return m.kelas === k; });
@@ -1813,6 +1865,41 @@ function apiAnalisis(peperiksaan) {
       return subjekCfg.indexOf(s.n) > -1;
     });
     var tahap1 = isTahap1Kelas(k);
+
+    // Analisis sudah mempunyai calon, subjek dan markah bagi kelas ini. Sediakan
+    // terus cache Isi Markah dan Status supaya tab tersebut tidak membaca Sheets
+    // sekali lagi selepas pengguna login.
+    var markahKelas = peta[k] || {};
+    var kelasIsi = {
+      tahap1: tahap1,
+      subjek: subjekList.map(function (s) { return { n: s.n, w: s.w }; }),
+      murid: muridKelas.map(function (m, i) {
+        var ambil = {};
+        subjekList.forEach(function (s) { ambil[s.n] = muridAmbilSubjek(m, s.n); });
+        return { bil: i + 1, nama: m.nama, jantina: m.jantina, ic: m.ic, ambil: ambil };
+      })
+    };
+    simpanCacheData("ISI_KELAS", peperiksaan + "\u0001" + k, {
+      kelas: kelasIsi,
+      markah: markahKelas
+    }, 21600);
+
+    var statusBaris = { kelas: k, subjek: [] };
+    subjekList.forEach(function (s) {
+      var patut = 0, ada = 0, guru = "";
+      muridKelas.forEach(function (m) {
+        if (!muridAmbilSubjek(m, s.n)) return;
+        patut++;
+        var rekodMurid = markahKelas[m.ic] || markahKelas[m.nama] || {};
+        var rec = rekodMurid[s.n];
+        if (rec && rec.m !== "" && rec.m !== null) ada++;
+      });
+      tugasanStatus.forEach(function (tugasan) {
+        if (tugasan.kelas === k && tugasan.subjek === s.n) guru = tugasan.guru;
+      });
+      statusBaris.subjek.push({ n: s.n, ada: ada, patut: patut, guru: guru });
+    });
+    statusKelas.push(statusBaris);
 
     var muridHasil = muridKelas.map(function (m, idx) {
       var rekod = [];
@@ -1895,6 +1982,19 @@ function apiAnalisis(peperiksaan) {
     dijana: new Date().toLocaleString("ms-MY"),
     kelas: hasilKelas
   };
+  var semuaSubjekStatus = getSubjekSemua().map(function (s) { return s.n; });
+  if (cfg && (cfg.subjekT1 || cfg.subjekT2)) {
+    semuaSubjekStatus = semuaSubjekStatus.filter(function (s) {
+      var dlmT1 = !cfg.subjekT1 || cfg.subjekT1.indexOf(s) > -1;
+      var dlmT2 = !cfg.subjekT2 || cfg.subjekT2.indexOf(s) > -1;
+      return dlmT1 || dlmT2;
+    });
+  }
+  simpanCacheData("STATUS", peperiksaan || "", {
+    kelas: statusKelas,
+    semuaSubjek: semuaSubjekStatus,
+    kunci: cfg ? cfg.kunci : false
+  }, 21600);
   return simpanCacheData("ANALISIS", peperiksaan || "", hasilAnalisis, 21600);
 }
 
