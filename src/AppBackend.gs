@@ -129,8 +129,31 @@ function apiMula() {
   var init = apiInit();
   var peperiksaan = init.aktif ||
     (init.peperiksaan && init.peperiksaan.length ? init.peperiksaan[0].nama : "");
-  var hasil = { init: init, analisis: peperiksaan ? apiAnalisis(peperiksaan) : null };
+  var analisis = peperiksaan ? apiAnalisis(peperiksaan) : null;
+  var hasil = { init: init, analisis: _ringkaskanAnalisisMula(analisis) };
   return simpanCacheData("MULA", "utama", hasil, 21600);
+}
+
+// Muatan awal hanya memerlukan angka dan ringkasan dashboard. Rekod murid penuh
+// dimuat di latar selepas skrin pertama muncul supaya respons permulaan kecil.
+function _ringkaskanAnalisisMula(analisis) {
+  if (!analisis) return null;
+  return {
+    sekolah: analisis.sekolah,
+    tahun: analisis.tahun,
+    peperiksaan: analisis.peperiksaan,
+    dijana: analisis.dijana,
+    ringkas: true,
+    kelas: (analisis.kelas || []).map(function (k) {
+      return {
+        nama: k.nama,
+        tahap1: k.tahap1,
+        subjek: k.subjek,
+        ringkasan: k.ringkasan,
+        murid: []
+      };
+    })
+  };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -189,6 +212,18 @@ function apiMarkah(peperiksaan, namaKelas) {
     peta[id][r[3]] = { m: r[4], tp: r[5] };
   });
   return simpanCacheData("MARKAH", bahagianCache, peta, 21600);
+}
+
+// Isi Markah mendapat senarai murid dan semua markah kelas melalui satu RPC.
+// Ini menghapuskan satu muatan iframe/Apps Script pada setiap pilihan kelas.
+function apiIsiKelas(peperiksaan, namaKelas) {
+  var bahagianCache = (peperiksaan || "") + "\u0001" + (namaKelas || "");
+  var cacheIsi = bacaCacheData("ISI_KELAS", bahagianCache);
+  if (cacheIsi) return cacheIsi;
+  return simpanCacheData("ISI_KELAS", bahagianCache, {
+    kelas: apiKelas(namaKelas, peperiksaan),
+    markah: apiMarkah(peperiksaan, namaKelas)
+  }, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1236,6 +1271,7 @@ function doPost(e) {
       apiAnalisis: apiAnalisis,
       apiInit: apiInit,
       apiMula: apiMula,
+      apiIsiKelas: apiIsiKelas,
       apiKelas: apiKelas,
       apiLoginAdmin: apiLoginAdmin,
       apiLoginGuru: apiLoginGuru,
@@ -1444,8 +1480,31 @@ function apiMula() {
   var init = apiInit();
   var peperiksaan = init.aktif ||
     (init.peperiksaan && init.peperiksaan.length ? init.peperiksaan[0].nama : "");
-  var hasil = { init: init, analisis: peperiksaan ? apiAnalisis(peperiksaan) : null };
+  var analisis = peperiksaan ? apiAnalisis(peperiksaan) : null;
+  var hasil = { init: init, analisis: _ringkaskanAnalisisMula(analisis) };
   return simpanCacheData("MULA", "utama", hasil, 21600);
+}
+
+// Muatan awal hanya memerlukan angka dan ringkasan dashboard. Rekod murid penuh
+// dimuat di latar selepas skrin pertama muncul supaya respons permulaan kecil.
+function _ringkaskanAnalisisMula(analisis) {
+  if (!analisis) return null;
+  return {
+    sekolah: analisis.sekolah,
+    tahun: analisis.tahun,
+    peperiksaan: analisis.peperiksaan,
+    dijana: analisis.dijana,
+    ringkas: true,
+    kelas: (analisis.kelas || []).map(function (k) {
+      return {
+        nama: k.nama,
+        tahap1: k.tahap1,
+        subjek: k.subjek,
+        ringkasan: k.ringkasan,
+        murid: []
+      };
+    })
+  };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1504,6 +1563,18 @@ function apiMarkah(peperiksaan, namaKelas) {
     peta[id][r[3]] = { m: r[4], tp: r[5] };
   });
   return simpanCacheData("MARKAH", bahagianCache, peta, 21600);
+}
+
+// Isi Markah mendapat senarai murid dan semua markah kelas melalui satu RPC.
+// Ini menghapuskan satu muatan iframe/Apps Script pada setiap pilihan kelas.
+function apiIsiKelas(peperiksaan, namaKelas) {
+  var bahagianCache = (peperiksaan || "") + "\u0001" + (namaKelas || "");
+  var cacheIsi = bacaCacheData("ISI_KELAS", bahagianCache);
+  if (cacheIsi) return cacheIsi;
+  return simpanCacheData("ISI_KELAS", bahagianCache, {
+    kelas: apiKelas(namaKelas, peperiksaan),
+    markah: apiMarkah(peperiksaan, namaKelas)
+  }, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════

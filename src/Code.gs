@@ -656,7 +656,7 @@ function getTetapan() {
 // Cache ini hanya mempercepat paparan. Google Sheets kekal sumber sebenar dan
 // kegagalan/eviction cache sentiasa jatuh semula kepada bacaan Sheets biasa.
 // ════════════════════════════════════════════════════════════════
-var VERSI_CACHE_DATA = "v50";
+var VERSI_CACHE_DATA = "v53";
 var KUNCI_REVISI_CACHE_DATA = "SEMAK_REVISI_CACHE_DATA";
 
 function _kunciCacheData(ruang, bahagian) {
