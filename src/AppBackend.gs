@@ -121,6 +121,18 @@ function apiInit() {
   return simpanCacheData("INIT", "utama", hasilInit, 21600);
 }
 
+// Satu panggilan permulaan mengelakkan dua perjalanan rangkaian berturutan
+// (apiInit kemudian apiAnalisis) ketika tab/browser baharu dibuka.
+function apiMula() {
+  var cacheMula = bacaCacheData("MULA", "utama");
+  if (cacheMula) return cacheMula;
+  var init = apiInit();
+  var peperiksaan = init.aktif ||
+    (init.peperiksaan && init.peperiksaan.length ? init.peperiksaan[0].nama : "");
+  var hasil = { init: init, analisis: peperiksaan ? apiAnalisis(peperiksaan) : null };
+  return simpanCacheData("MULA", "utama", hasil, 21600);
+}
+
 // ════════════════════════════════════════════════════════════════
 // API: LOGIN ADMIN
 // ════════════════════════════════════════════════════════════════
@@ -1223,6 +1235,7 @@ function doPost(e) {
     var dibenarkan = {
       apiAnalisis: apiAnalisis,
       apiInit: apiInit,
+      apiMula: apiMula,
       apiKelas: apiKelas,
       apiLoginAdmin: apiLoginAdmin,
       apiLoginGuru: apiLoginGuru,
@@ -1421,6 +1434,18 @@ function apiInit() {
     guruKelas: getGuruKelasMap()
   };
   return simpanCacheData("INIT", "utama", hasilInit, 21600);
+}
+
+// Satu panggilan permulaan mengelakkan dua perjalanan rangkaian berturutan
+// (apiInit kemudian apiAnalisis) ketika tab/browser baharu dibuka.
+function apiMula() {
+  var cacheMula = bacaCacheData("MULA", "utama");
+  if (cacheMula) return cacheMula;
+  var init = apiInit();
+  var peperiksaan = init.aktif ||
+    (init.peperiksaan && init.peperiksaan.length ? init.peperiksaan[0].nama : "");
+  var hasil = { init: init, analisis: peperiksaan ? apiAnalisis(peperiksaan) : null };
+  return simpanCacheData("MULA", "utama", hasil, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════

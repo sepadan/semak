@@ -836,11 +836,16 @@ if (CACHE_PAPARAN) {
   mula(CACHE_PAPARAN.init, true);
 }
 
-google.script.run.withSuccessHandler(function (d) { mula(d, false); })
+google.script.run.withSuccessHandler(function (pakej) {
+    if (!pakej || !pakej.init) throw new Error("Data permulaan tidak lengkap.");
+    ANALISIS = pakej.analisis || null;
+    mula(pakej.init, !!ANALISIS);
+    simpanCachePaparan();
+  })
   .withFailureHandler(function (e) {
     if (!CACHE_PAPARAN)
       document.getElementById("muat").innerHTML = "❌ Gagal memuat: " + e.message;
-  }).apiInit();
+  }).apiMula();
 
 function mula(d, dariCache) {
   INIT = d;
