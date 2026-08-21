@@ -695,6 +695,10 @@ var PERANAN = null, GURU_AKTIF = "", KATA = "";
 var PEPERIKSAAN_PADAM = "";
 var WARNA = { A:"#43a047", B:"#7cb342", C:"#fdd835", D:"#fb8c00", E:"#f06292", F:"#e53935", TH:"#9e9e9e" };
 var KUNCI_SESI = "sms_sesi_v1";
+var TIMER_SESI = null;
+var LOGIN_SEMULA_SEDANG = false;
+var PERANAN_LOGIN_SEMULA = "", GURU_LOGIN_SEMULA = "";
+var SELANG_SEMAK_SESI_MS = 5 * 60 * 1000;
 
 function simpanSesiPelayar() {
   sessionStorage.setItem(KUNCI_SESI, JSON.stringify({ sesi: KATA }));
@@ -708,8 +712,62 @@ function pulihSesiPelayar() {
     if (!r.ok) { buangSesiPelayar(); return; }
     PERANAN = r.peranan; GURU_AKTIF = r.guru || ""; KATA = simpanan.sesi;
     kemasKiniPeranan();
+    mulaPemantauanSesi();
   }).apiSemakSesi(simpanan.sesi);
 }
+
+function hentiPemantauanSesi() {
+  if (TIMER_SESI) {
+    clearInterval(TIMER_SESI);
+    TIMER_SESI = null;
+  }
+}
+
+function mulaPemantauanSesi() {
+  hentiPemantauanSesi();
+  if (!KATA) return;
+  TIMER_SESI = setInterval(semakSesiAktif, SELANG_SEMAK_SESI_MS);
+}
+
+function semakSesiAktif() {
+  if (!KATA) return;
+  var tokenDisemak = KATA;
+  google.script.run.withSuccessHandler(function (r) {
+    if (tokenDisemak !== KATA) return;
+    if (!r || !r.ok) mintaLoginSemula();
+  }).withFailureHandler(function () {
+    // Gangguan rangkaian sementara tidak dianggap sebagai sesi tamat.
+  }).apiSemakSesi(tokenDisemak);
+}
+
+function mesejPerluLogin(mesej) {
+  return /sila login|sesi[^.]*tamat/i.test(String(mesej || ""));
+}
+
+function mintaLoginSemula() {
+  if (LOGIN_SEMULA_SEDANG || !PERANAN) return;
+  LOGIN_SEMULA_SEDANG = true;
+  PERANAN_LOGIN_SEMULA = PERANAN;
+  GURU_LOGIN_SEMULA = GURU_AKTIF;
+  KATA = "";
+  buangSesiPelayar();
+  hentiPemantauanSesi();
+
+  bukaLogin();
+  pilihPeranan(PERANAN_LOGIN_SEMULA);
+  if (PERANAN_LOGIN_SEMULA === "guru") {
+    document.getElementById("mGuruNama").value = GURU_LOGIN_SEMULA;
+    document.getElementById("mGuruKata").value = "";
+    document.getElementById("mGuruKata").focus();
+  } else {
+    document.getElementById("mAdminKata").focus();
+  }
+  st("stLogin", "⚠️ Sesi telah tamat. Login semula. Markah yang sedang ditaip masih dikekalkan.", "err");
+}
+
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden && KATA) semakSesiAktif();
+});
 
 google.script.run.withSuccessHandler(mula)
   .withFailureHandler(function (e) {
@@ -827,7 +885,12 @@ function bukaLogin() {
   document.getElementById("mAdmin").style.display = "none";
   stTutup("stLogin");
 }
-function tutupLogin() { document.getElementById("mLogin").style.display = "none"; }
+function tutupLogin() {
+  document.getElementById("mLogin").style.display = "none";
+  LOGIN_SEMULA_SEDANG = false;
+  PERANAN_LOGIN_SEMULA = "";
+  GURU_LOGIN_SEMULA = "";
+}
 
 function pilihPeranan(p) {
   document.getElementById("mPeranan").style.display = "none";
@@ -851,6 +914,10 @@ function loginGuru() {
   var nama = document.getElementById("mGuruNama").value;
   var kata = document.getElementById("mGuruKata").value;
   if (!nama) { st("stLogin", "Sila pilih nama anda.", "err"); return; }
+  if (LOGIN_SEMULA_SEDANG && GURU_LOGIN_SEMULA && nama !== GURU_LOGIN_SEMULA) {
+    st("stLogin", "Sila login semula menggunakan nama guru yang sama.", "err");
+    return;
+  }
   if (!kata) { st("stLogin", "Masukkan kata laluan.", "err"); return; }
   var btn = document.getElementById("btnMasukGuru");
   btn.disabled = true;
@@ -858,9 +925,12 @@ function loginGuru() {
   google.script.run.withSuccessHandler(function (r) {
     btn.disabled = false;
     if (r.ok) {
+      var loginSemula = LOGIN_SEMULA_SEDANG;
       PERANAN = "guru"; GURU_AKTIF = nama; KATA = r.sesi;
       document.getElementById("mGuruKata").value = "";
-      simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan();
+      simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan(loginSemula); mulaPemantauanSesi();
+      if (loginSemula)
+        st("stIsi", "✅ Login semula berjaya. Markah yang ditaip masih ada. Tekan Simpan Markah sekali lagi.", "ok");
     } else st("stLogin", "❌ Kata laluan salah.", "err");
   }).withFailureHandler(function (e) {
     btn.disabled = false;
@@ -877,8 +947,11 @@ function loginAdmin() {
   google.script.run.withSuccessHandler(function (r) {
     btn.disabled = false;
     if (r.ok) {
+      var loginSemula = LOGIN_SEMULA_SEDANG;
       PERANAN = "admin"; KATA = r.sesi; GURU_AKTIF = "";
-      simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan();
+      simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan(loginSemula); mulaPemantauanSesi();
+      if (loginSemula)
+        st("stIsi", "✅ Login semula berjaya. Markah yang ditaip masih ada. Tekan Simpan Markah sekali lagi.", "ok");
     } else st("stLogin", "❌ Kata laluan salah.", "err");
   }).withFailureHandler(function (e) {
     btn.disabled = false;
@@ -888,11 +961,14 @@ function loginAdmin() {
 
 function logout() {
   PERANAN = null; GURU_AKTIF = ""; KATA = "";
+  hentiPemantauanSesi();
+  LOGIN_SEMULA_SEDANG = false;
+  PERANAN_LOGIN_SEMULA = ""; GURU_LOGIN_SEMULA = "";
   buangSesiPelayar();
   kemasKiniPeranan();
 }
 
-function kemasKiniPeranan() {
+function kemasKiniPeranan(peliharaIsiMarkah) {
   var chip = document.getElementById("chipUser");
   document.getElementById("btnLogin").style.display  = PERANAN ? "none" : "inline-block";
   document.getElementById("btnLogout").style.display = PERANAN ? "inline-block" : "none";
@@ -918,7 +994,7 @@ function kemasKiniPeranan() {
     document.getElementById("p-dash").classList.add("aktif");
   }
 
-  isiDropdownKelasIsi();
+  if (!peliharaIsiMarkah) isiDropdownKelasIsi();
   isiDropdownKelasCetak();
 }
 
@@ -1126,6 +1202,11 @@ function simpanMarkah() {
   var subjek = document.getElementById("isiSubjek").value;
   if (!kelas || !subjek) return;
   if (!PERANAN) { st("stIsi", "⚠️ Sila login dahulu.", "err"); return; }
+  if (!KATA) {
+    st("stIsi", "⚠️ Sesi telah tamat. Login semula untuk menyimpan markah.", "err");
+    mintaLoginSemula();
+    return;
+  }
   if (!bolehSimpanPeperiksaanIsi()) {
     st("stIsi", "Peperiksaan dipilih hanya untuk paparan. Aktifkan dan buka kunci peperiksaan untuk menyimpan markah.", "err");
     return;
@@ -1150,8 +1231,13 @@ function simpanMarkah() {
   st("stIsi", "⏳ Menyimpan...", "loading");
   google.script.run.withSuccessHandler(function (r) {
     btn.disabled = false;
+    if (!r.ok && mesejPerluLogin(r.mesej)) {
+      st("stIsi", "⚠️ Sesi telah tamat. Login semula untuk menyimpan. Markah yang ditaip masih ada.", "err");
+      mintaLoginSemula();
+      return;
+    }
     st("stIsi", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    ANALISIS = null;
+    if (r.ok) ANALISIS = null;
   }).withFailureHandler(function (e) {
     btn.disabled = false;
     st("stIsi", "❌ " + e.message, "err");

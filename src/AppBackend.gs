@@ -25,9 +25,16 @@ function _ciptaSesi(peranan, guru) {
 
 function sahkanSesi(token) {
   if (!token) return null;
-  var mentah = CacheService.getScriptCache().get("SESI_" + token);
+  var cache = CacheService.getScriptCache();
+  var kunci = "SESI_" + token;
+  var mentah = cache.get(kunci);
   if (!mentah) return null;
-  try { return JSON.parse(mentah); } catch (e) { return null; }
+  try {
+    var sesi = JSON.parse(mentah);
+    // Tempoh sesi bergerak: selagi tab masih digunakan, lanjutkan enam jam lagi.
+    cache.put(kunci, JSON.stringify(sesi), TEMPOH_SESI_SAAT);
+    return sesi;
+  } catch (e) { return null; }
 }
 
 function apiSemakSesi(token) {
@@ -1266,9 +1273,16 @@ function _ciptaSesi(peranan, guru) {
 
 function sahkanSesi(token) {
   if (!token) return null;
-  var mentah = CacheService.getScriptCache().get("SESI_" + token);
+  var cache = CacheService.getScriptCache();
+  var kunci = "SESI_" + token;
+  var mentah = cache.get(kunci);
   if (!mentah) return null;
-  try { return JSON.parse(mentah); } catch (e) { return null; }
+  try {
+    var sesi = JSON.parse(mentah);
+    // Tempoh sesi bergerak: selagi tab masih digunakan, lanjutkan enam jam lagi.
+    cache.put(kunci, JSON.stringify(sesi), TEMPOH_SESI_SAAT);
+    return sesi;
+  } catch (e) { return null; }
 }
 
 function apiSemakSesi(token) {
