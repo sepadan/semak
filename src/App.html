@@ -688,7 +688,9 @@
 <div id="printArea"></div>
 
 <script>
-var INIT = null, KELAS_CACHE = {}, ANALISIS = null, charts = {};
+var INIT = null, KELAS_CACHE = {}, MARKAH_CACHE = {}, STATUS_CACHE = {}, ANALISIS = null, charts = {};
+var STATUS_MENUNGGU = {};
+var PEPERIKSAAN_CACHE_ISI = "";
 var GURU_SEMENTARA = [];
 var CSV_MURID_TAJUK = [], CSV_MURID_BARIS = [], CSV_MURID_BARIS_TAJUK = 0;
 var PERANAN = null, GURU_AKTIF = "", KATA = "";
@@ -696,12 +698,47 @@ var PEPERIKSAAN_PADAM = "";
 var WARNA = { A:"#43a047", B:"#7cb342", C:"#fdd835", D:"#fb8c00", E:"#f06292", F:"#e53935", TH:"#9e9e9e" };
 var KUNCI_SESI = "sms_sesi_v1";
 var KUNCI_PAPARAN = "semak_paparan_v1";
+var KUNCI_DATA_PANTAS = "semak_data_pantas_v1";
 var TEMPOH_PAPARAN_MS = 30 * 60 * 1000;
 var ANTARAMUKA_DIMULAKAN = false;
 var TIMER_SESI = null;
 var LOGIN_SEMULA_SEDANG = false;
 var PERANAN_LOGIN_SEMULA = "", GURU_LOGIN_SEMULA = "";
 var SELANG_SEMAK_SESI_MS = 5 * 60 * 1000;
+
+function bacaCacheDataPantas() {
+  try {
+    var cache = JSON.parse(sessionStorage.getItem(KUNCI_DATA_PANTAS) || "null");
+    if (!cache || Date.now() - Number(cache.masa || 0) > TEMPOH_PAPARAN_MS) return;
+    KELAS_CACHE = cache.kelas || {};
+    MARKAH_CACHE = cache.markah || {};
+    STATUS_CACHE = cache.status || {};
+    PEPERIKSAAN_CACHE_ISI = cache.peperiksaan || "";
+  } catch (e) {}
+}
+
+function simpanCacheDataPantas() {
+  try {
+    sessionStorage.setItem(KUNCI_DATA_PANTAS, JSON.stringify({
+      masa: Date.now(), peperiksaan: PEPERIKSAAN_CACHE_ISI,
+      kelas: KELAS_CACHE, markah: MARKAH_CACHE, status: STATUS_CACHE
+    }));
+  } catch (e) {}
+}
+
+function kunciMarkahCache(peperiksaan, kelas) {
+  return String(peperiksaan || "") + "\u0001" + String(kelas || "");
+}
+
+function pastikanCacheIsiPeperiksaan(peperiksaan) {
+  if (PEPERIKSAAN_CACHE_ISI && PEPERIKSAAN_CACHE_ISI !== peperiksaan) {
+    KELAS_CACHE = {};
+    MARKAH_CACHE = {};
+  }
+  PEPERIKSAAN_CACHE_ISI = peperiksaan;
+}
+
+bacaCacheDataPantas();
 
 function simpanSesiPelayar() {
   sessionStorage.setItem(KUNCI_SESI, JSON.stringify({ sesi: KATA }));
@@ -716,6 +753,7 @@ function pulihSesiPelayar() {
     PERANAN = r.peranan; GURU_AKTIF = r.guru || ""; KATA = simpanan.sesi;
     kemasKiniPeranan();
     mulaPemantauanSesi();
+    praMuatStatus();
   }).apiSemakSesi(simpanan.sesi);
 }
 
@@ -843,6 +881,10 @@ function segarkanInit(cb) {
   google.script.run.withSuccessHandler(function (d) {
     INIT = d;
     KELAS_CACHE = {};
+    MARKAH_CACHE = {};
+    STATUS_CACHE = {};
+    PEPERIKSAAN_CACHE_ISI = d.aktif || "";
+    simpanCacheDataPantas();
     document.getElementById("hSekolah").textContent = d.sekolah;
     paparLogoHeader();
     isiDropdownPeperiksaan();
@@ -967,6 +1009,7 @@ function loginGuru() {
       PERANAN = "guru"; GURU_AKTIF = nama; KATA = r.sesi;
       document.getElementById("mGuruKata").value = "";
       simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan(loginSemula); mulaPemantauanSesi();
+      praMuatStatus();
       if (loginSemula)
         st("stIsi", "✅ Login semula berjaya. Markah yang ditaip masih ada. Tekan Simpan Markah sekali lagi.", "ok");
     } else st("stLogin", "❌ Kata laluan salah.", "err");
@@ -988,6 +1031,7 @@ function loginAdmin() {
       var loginSemula = LOGIN_SEMULA_SEDANG;
       PERANAN = "admin"; KATA = r.sesi; GURU_AKTIF = "";
       simpanSesiPelayar(); tutupLogin(); kemasKiniPeranan(loginSemula); mulaPemantauanSesi();
+      praMuatStatus();
       if (loginSemula)
         st("stIsi", "✅ Login semula berjaya. Markah yang ditaip masih ada. Tekan Simpan Markah sekali lagi.", "ok");
     } else st("stLogin", "❌ Kata laluan salah.", "err");
@@ -1089,10 +1133,14 @@ function isiDropdownKelasCetak() {
 function tukarPeperiksaan() {
   ANALISIS = null;
   KELAS_CACHE = {};
+  MARKAH_CACHE = {};
+  PEPERIKSAAN_CACHE_ISI = peperiksaanAktif();
+  simpanCacheDataPantas();
   document.getElementById("dashIsi").style.display = "none";
   isiDropdownKelasIsi();
   isiDropdownKelasCetak();
   muatDash(); // analisis dimuat semula automatik ikut peperiksaan dipilih
+  praMuatStatus();
 }
 
 function tambahPeperiksaanDropdown(nama) {
@@ -1115,23 +1163,64 @@ function kiraTPJS(v) {
   if (m >= 45) return 3; if (m >= 30) return 2; return 1;
 }
 
-function muatIsi() {
+function muatIsiPantas() {
   if (!peperiksaanIsi()) return;
+  var peperiksaan = peperiksaanIsi();
   var kelas = document.getElementById("isiKelas").value;
   document.getElementById("tIsi").innerHTML = "";
   document.getElementById("btnSimpan").style.display = "none";
   stTutup("stIsi");
   if (!kelas) return;
 
-  if (KELAS_CACHE[kelas]) { isiSubjekDropdown(kelas); return; }
-  st("stIsi", "⏳ Memuat senarai murid...", "loading");
-  google.script.run.withSuccessHandler(function (d) {
-    KELAS_CACHE[kelas] = d;
+  pastikanCacheIsiPeperiksaan(peperiksaan);
+  var kunci = kunciMarkahCache(peperiksaan, kelas);
+  var kelasSiap = !!KELAS_CACHE[kelas];
+  var markahSiap = Object.prototype.hasOwnProperty.call(MARKAH_CACHE, kunci);
+  if (kelasSiap && markahSiap) {
+    isiSubjekDropdown(kelas);
+    return;
+  }
+
+  var gagal = false;
+  st("stIsi", "⏳ Memuat senarai murid dan markah...", "loading");
+  function lengkapkanIsi() {
+    if (gagal || !kelasSiap || !markahSiap) return;
+    simpanCacheDataPantas();
+    if (peperiksaanIsi() !== peperiksaan || document.getElementById("isiKelas").value !== kelas) return;
     stTutup("stIsi");
     isiSubjekDropdown(kelas);
-  }).withFailureHandler(function (e) {
-    st("stIsi", "❌ " + e.message, "err");
-  }).apiKelas(kelas, peperiksaanIsi());
+  }
+
+  if (!kelasSiap) {
+    google.script.run.withSuccessHandler(function (d) {
+      if (!d || !Array.isArray(d.murid) || !Array.isArray(d.subjek)) {
+        gagal = true;
+        st("stIsi", "❌ Data kelas tidak lengkap. Sila pilih semula kelas.", "err");
+        return;
+      }
+      KELAS_CACHE[kelas] = d;
+      kelasSiap = true;
+      lengkapkanIsi();
+    }).withFailureHandler(function (e) {
+      gagal = true;
+      st("stIsi", "❌ Gagal memuat senarai murid: " + (e && e.message ? e.message : e), "err");
+    }).apiKelas(kelas, peperiksaan);
+  }
+
+  if (!markahSiap) {
+    google.script.run.withSuccessHandler(function (peta) {
+      MARKAH_CACHE[kunci] = peta || {};
+      markahSiap = true;
+      lengkapkanIsi();
+    }).withFailureHandler(function (e) {
+      gagal = true;
+      st("stIsi", "❌ Gagal memuat markah: " + (e && e.message ? e.message : e), "err");
+    }).apiMarkah(peperiksaan, kelas);
+  }
+}
+
+function muatIsi() {
+  muatIsiPantas();
 }
 
 function isiSubjekDropdown(kelas) {
@@ -1164,17 +1253,31 @@ document.addEventListener("change", function (e) {
   if (e.target.id === "isiSubjek" && e.target.value) muatJadualIsi();
 });
 
-function muatJadualIsi() {
+function muatJadualIsiPantas() {
   var kelas = document.getElementById("isiKelas").value;
   var subjek = document.getElementById("isiSubjek").value;
   if (!kelas || !subjek) return;
+  var peperiksaan = peperiksaanIsi();
+  var kunci = kunciMarkahCache(peperiksaan, kelas);
+  if (Object.prototype.hasOwnProperty.call(MARKAH_CACHE, kunci)) {
+    stTutup("stIsi");
+    binaJadualIsi(kelas, subjek, MARKAH_CACHE[kunci] || {});
+    return;
+  }
+  // Fallback jika cache kelas dibuang atau panggilan terdahulu terganggu.
   st("stIsi", "⏳ Memuat markah sedia ada...", "loading");
   google.script.run.withSuccessHandler(function (peta) {
+    MARKAH_CACHE[kunci] = peta || {};
+    simpanCacheDataPantas();
     stTutup("stIsi");
-    binaJadualIsi(kelas, subjek, peta);
+    binaJadualIsi(kelas, subjek, MARKAH_CACHE[kunci]);
   }).withFailureHandler(function (e) {
     st("stIsi", "❌ " + e.message, "err");
-  }).apiMarkah(peperiksaanIsi(), kelas);
+  }).apiMarkah(peperiksaan, kelas);
+}
+
+function muatJadualIsi() {
+  muatJadualIsiPantas();
 }
 
 function binaJadualIsi(kelas, subjek, peta) {
@@ -1279,7 +1382,23 @@ function simpanMarkah() {
       return;
     }
     st("stIsi", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err");
-    if (r.ok) ANALISIS = null;
+    if (r.ok) {
+      var peperiksaan = peperiksaanIsi();
+      var kunci = kunciMarkahCache(peperiksaan, kelas);
+      var peta = MARKAH_CACHE[kunci] || {};
+      data.forEach(function (d) {
+        var id = String(d.ic || d.nama || "").trim();
+        if (!id) return;
+        if (!peta[id]) peta[id] = {};
+        peta[id][subjek] = { m: d.markah, tp: d.tp };
+      });
+      MARKAH_CACHE[kunci] = peta;
+      delete STATUS_CACHE[peperiksaan];
+      ANALISIS = null;
+      sessionStorage.removeItem(KUNCI_PAPARAN);
+      simpanCacheDataPantas();
+      praMuatStatus();
+    }
   }).withFailureHandler(function (e) {
     btn.disabled = false;
     st("stIsi", "❌ " + e.message, "err");
@@ -1287,32 +1406,69 @@ function simpanMarkah() {
 }
 
 // ═══════════════ STATUS PENGISIAN ═══════════════
-function muatStatus() {
-  document.getElementById("stTajuk").textContent = peperiksaanAktif();
-  document.getElementById("tStatus").innerHTML =
-    "<tr><td style='padding:16px'>⏳ Memuat...</td></tr>";
-  google.script.run.withSuccessHandler(function (d) {
-    var h = "<tr><th class='kiri'>Kelas</th>";
-    d.semuaSubjek.forEach(function (s) { h += "<th>" + s + "</th>"; });
-    h += "</tr>";
-    d.kelas.forEach(function (k) {
-      h += "<tr><td class='kiri'><b>" + k.kelas + "</b></td>";
-      d.semuaSubjek.forEach(function (sn) {
-        var sub = null;
-        for (var i = 0; i < k.subjek.length; i++)
-          if (k.subjek[i].n === sn) { sub = k.subjek[i]; break; }
-        if (!sub || sub.patut === 0) { h += "<td class='st-na'>—</td>"; return; }
-        var cls = sub.ada === 0 ? "st-kosong" : (sub.ada >= sub.patut ? "st-penuh" : "st-separa");
-        h += "<td class='" + cls + "'>" + sub.ada + "/" + sub.patut +
-             (sub.guru ? "<span class='guru-kecil'>" + sub.guru + "</span>" : "") + "</td>";
-      });
-      h += "</tr>";
+function paparStatusData(d) {
+  var h = "<tr><th class='kiri'>Kelas</th>";
+  d.semuaSubjek.forEach(function (s) { h += "<th>" + s + "</th>"; });
+  h += "</tr>";
+  d.kelas.forEach(function (k) {
+    h += "<tr><td class='kiri'><b>" + k.kelas + "</b></td>";
+    d.semuaSubjek.forEach(function (sn) {
+      var sub = null;
+      for (var i = 0; i < k.subjek.length; i++)
+        if (k.subjek[i].n === sn) { sub = k.subjek[i]; break; }
+      if (!sub || sub.patut === 0) { h += "<td class='st-na'>—</td>"; return; }
+      var cls = sub.ada === 0 ? "st-kosong" : (sub.ada >= sub.patut ? "st-penuh" : "st-separa");
+      h += "<td class='" + cls + "'>" + sub.ada + "/" + sub.patut +
+           (sub.guru ? "<span class='guru-kecil'>" + sub.guru + "</span>" : "") + "</td>";
     });
-    document.getElementById("tStatus").innerHTML = h;
+    h += "</tr>";
+  });
+  document.getElementById("tStatus").innerHTML = h;
+}
+
+function mintaStatusPantas(peperiksaan, callback, paksaSegar) {
+  if (!paksaSegar && STATUS_CACHE[peperiksaan]) {
+    if (callback) callback(STATUS_CACHE[peperiksaan], null);
+    return;
+  }
+  if (STATUS_MENUNGGU[peperiksaan]) {
+    if (callback) STATUS_MENUNGGU[peperiksaan].push(callback);
+    return;
+  }
+  STATUS_MENUNGGU[peperiksaan] = callback ? [callback] : [];
+  google.script.run.withSuccessHandler(function (d) {
+    STATUS_CACHE[peperiksaan] = d;
+    simpanCacheDataPantas();
+    var menunggu = STATUS_MENUNGGU[peperiksaan] || [];
+    delete STATUS_MENUNGGU[peperiksaan];
+    menunggu.forEach(function (cb) { cb(d, null); });
   }).withFailureHandler(function (e) {
-    document.getElementById("tStatus").innerHTML =
-      "<tr><td style='color:#c62828;padding:16px'>❌ " + e.message + "</td></tr>";
-  }).apiStatus(peperiksaanAktif());
+    var menunggu = STATUS_MENUNGGU[peperiksaan] || [];
+    delete STATUS_MENUNGGU[peperiksaan];
+    menunggu.forEach(function (cb) { cb(null, e); });
+  }).apiStatus(peperiksaan);
+}
+
+function praMuatStatus() {
+  if (!PERANAN || !INIT || !peperiksaanAktif()) return;
+  mintaStatusPantas(peperiksaanAktif(), null, false);
+}
+
+function muatStatus() {
+  var peperiksaan = peperiksaanAktif();
+  document.getElementById("stTajuk").textContent = peperiksaan;
+  var sedia = STATUS_CACHE[peperiksaan];
+  if (sedia) paparStatusData(sedia);
+  else document.getElementById("tStatus").innerHTML =
+    "<tr><td style='padding:16px'>⏳ Memuat...</td></tr>";
+
+  mintaStatusPantas(peperiksaan, function (d, e) {
+    if (peperiksaanAktif() !== peperiksaan) return;
+    if (d) paparStatusData(d);
+    else if (!sedia) document.getElementById("tStatus").innerHTML =
+      "<tr><td style='color:#c62828;padding:16px'>❌ " +
+      (e && e.message ? e.message : e) + "</td></tr>";
+  }, !!sedia);
 }
 
 // ═══════════════ DASHBOARD ═══════════════
@@ -2281,28 +2437,7 @@ function normIsiMarkah(v) {
   return (v == null ? "" : String(v)).replace(/\s+/g, " ").trim().toUpperCase();
 }
 function muatIsi() {
-  if (!peperiksaanIsi()) return;
-  var kelas = document.getElementById("isiKelas").value;
-  document.getElementById("tIsi").innerHTML = "";
-  document.getElementById("btnSimpan").style.display = "none";
-  stTutup("stIsi");
-  if (!kelas) return;
-  if (KELAS_CACHE[kelas]) {
-    isiSubjekDropdown(kelas);
-    return;
-  }
-  st("stIsi", "⏳ Memuat senarai murid...", "loading");
-  google.script.run.withSuccessHandler(function (d) {
-    if (!d || !Array.isArray(d.murid) || !Array.isArray(d.subjek)) {
-      st("stIsi", "❌ Data kelas tidak lengkap. Sila pilih semula kelas.", "err");
-      return;
-    }
-    KELAS_CACHE[kelas] = d;
-    stTutup("stIsi");
-    isiSubjekDropdown(kelas);
-  }).withFailureHandler(function (e) {
-    st("stIsi", "❌ Gagal memuat senarai murid: " + (e && e.message ? e.message : e), "err");
-  }).apiKelas(kelas, peperiksaanIsi());
+  muatIsiPantas();
 }
 function isiSubjekDropdown(kelas) {
   var d = KELAS_CACHE[kelas];
@@ -2340,20 +2475,7 @@ function isiSubjekDropdown(kelas) {
   }
 }
 function muatJadualIsi() {
-  var kelas = document.getElementById("isiKelas").value;
-  var subjek = document.getElementById("isiSubjek").value;
-  if (!kelas || !subjek) return;
-  if (!KELAS_CACHE[kelas] || !Array.isArray(KELAS_CACHE[kelas].murid)) {
-    st("stIsi", "❌ Senarai murid belum tersedia. Sila pilih semula kelas.", "err");
-    return;
-  }
-  st("stIsi", "⏳ Memuat markah sedia ada...", "loading");
-  google.script.run.withSuccessHandler(function (peta) {
-    stTutup("stIsi");
-    binaJadualIsi(kelas, subjek, peta || {});
-  }).withFailureHandler(function (e) {
-    st("stIsi", "❌ Gagal memuat markah: " + (e && e.message ? e.message : e), "err");
-  }).apiMarkah(peperiksaanIsi(), kelas);
+  muatJadualIsiPantas();
 }
 </script>
 

@@ -73,6 +73,8 @@ function apiLogout(token) {
 // ════════════════════════════════════════════════════════════════
 
 function apiInit() {
+  var cacheInit = bacaCacheData("INIT", "utama");
+  if (cacheInit) return cacheInit;
   var t     = getTetapan();
   var murid = getMuridSemua();
 
@@ -101,7 +103,7 @@ function apiInit() {
     } catch (e) {}
   }
 
-  return {
+  var hasilInit = {
     sekolah: t.sekolah, tahun: t.tahun, aktif: t.aktif, guruBesar: t.guruBesar,
     logo: logo,
     kelas: kelasUnik,
@@ -116,6 +118,7 @@ function apiInit() {
     tugasan: getTugasanSemua(),
     guruKelas: getGuruKelasMap()
   };
+  return simpanCacheData("INIT", "utama", hasilInit, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -137,12 +140,15 @@ function apiLoginGuru(nama, kata) {
 // ════════════════════════════════════════════════════════════════
 
 function apiKelas(namaKelas, peperiksaan) {
+  var bahagianCache = (peperiksaan || "") + "\u0001" + (namaKelas || "");
+  var cacheKelas = bacaCacheData("KELAS", bahagianCache);
+  if (cacheKelas) return cacheKelas;
   var sumberMurid = peperiksaan ? getMuridPeperiksaan(peperiksaan) : getMuridSemua();
   var muridKelas = sumberMurid.filter(function (m) {
     return m.kelas === namaKelas;
   });
   var subjekList = subjekUntukKelas(namaKelas, muridKelas);
-  return {
+  var hasilKelas = {
     tahap1: isTahap1Kelas(namaKelas),
     subjek: subjekList.map(function (s) { return { n: s.n, w: s.w }; }),
     murid: muridKelas.map(function (m, i) {
@@ -151,6 +157,7 @@ function apiKelas(namaKelas, peperiksaan) {
       return { bil: i + 1, nama: m.nama, jantina: m.jantina, ic: m.ic, ambil: ambil };
     })
   };
+  return simpanCacheData("KELAS", bahagianCache, hasilKelas, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -158,6 +165,9 @@ function apiKelas(namaKelas, peperiksaan) {
 // ════════════════════════════════════════════════════════════════
 
 function apiMarkah(peperiksaan, namaKelas) {
+  var bahagianCache = (peperiksaan || "") + "\u0001" + (namaKelas || "");
+  var cacheMarkah = bacaCacheData("MARKAH", bahagianCache);
+  if (cacheMarkah) return cacheMarkah;
   var peta = {};
   _bacaDBMarkah().forEach(function (r) {
     if (r[0] !== peperiksaan || r[1] !== namaKelas) return;
@@ -166,7 +176,7 @@ function apiMarkah(peperiksaan, namaKelas) {
     if (!peta[id]) peta[id] = {};
     peta[id][r[3]] = { m: r[4], tp: r[5] };
   });
-  return peta;
+  return simpanCacheData("MARKAH", bahagianCache, peta, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -281,6 +291,7 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
       if (lastRow > 1) sMk.getRange(2, 1, lastRow - 1, 9).clearContent();
       if (semua.length) sMk.getRange(2, 1, semua.length, 9).setValues(semua);
 
+      batalCacheData();
       return { ok: true, mesej: baru.length + " markah " + subjek +
                " (" + namaKelas + ") disimpan." };
     } finally {
@@ -296,6 +307,8 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
 // ════════════════════════════════════════════════════════════════
 
 function apiStatus(peperiksaan) {
+  var cacheStatus = bacaCacheData("STATUS", peperiksaan || "");
+  if (cacheStatus) return cacheStatus;
   var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
 
@@ -354,7 +367,8 @@ function apiStatus(peperiksaan) {
       return dlmT1 || dlmT2;
     });
   }
-  return { kelas: hasil, semuaSubjek: semuaSubjek, kunci: cfg ? cfg.kunci : false };
+  var hasilStatus = { kelas: hasil, semuaSubjek: semuaSubjek, kunci: cfg ? cfg.kunci : false };
+  return simpanCacheData("STATUS", peperiksaan || "", hasilStatus, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -362,6 +376,8 @@ function apiStatus(peperiksaan) {
 // ════════════════════════════════════════════════════════════════
 
 function apiAnalisis(peperiksaan) {
+  var cacheAnalisis = bacaCacheData("ANALISIS", peperiksaan || "");
+  if (cacheAnalisis) return cacheAnalisis;
   var t     = getTetapan();
   var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
@@ -476,11 +492,12 @@ function apiAnalisis(peperiksaan) {
     });
   });
 
-  return {
+  var hasilAnalisis = {
     sekolah: t.sekolah, tahun: t.tahun, peperiksaan: peperiksaan,
     dijana: new Date().toLocaleString("ms-MY"),
     kelas: hasilKelas
   };
+  return simpanCacheData("ANALISIS", peperiksaan || "", hasilAnalisis, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1239,6 +1256,13 @@ function doPost(e) {
     var argumen = JSON.parse(e.parameter.argumen || "[]");
     if (!Array.isArray(argumen)) throw new Error("Argumen tidak sah.");
     var hasil = dibenarkan[kaedah].apply(null, argumen);
+    // Semua perubahan berjaya menukar revisi cache supaya bacaan seterusnya
+    // tidak mungkin memaparkan konfigurasi atau markah lama.
+    if (kaedah !== "apiSimpanMarkah" &&
+        /^api(?:Simpan|Tambah|Padam|Upload|Tetapkan|Segerak)/.test(kaedah) &&
+        (!hasil || hasil.ok !== false)) {
+      batalCacheData();
+    }
     return _jawapanRpcGitHub(id, true, hasil, "");
   } catch (ralat) {
     return _jawapanRpcGitHub(
@@ -1351,6 +1375,8 @@ function apiLogout(token) {
 // ════════════════════════════════════════════════════════════════
 
 function apiInit() {
+  var cacheInit = bacaCacheData("INIT", "utama");
+  if (cacheInit) return cacheInit;
   var t     = getTetapan();
   var murid = getMuridSemua();
 
@@ -1379,7 +1405,7 @@ function apiInit() {
     } catch (e) {}
   }
 
-  return {
+  var hasilInit = {
     sekolah: t.sekolah, tahun: t.tahun, aktif: t.aktif, guruBesar: t.guruBesar,
     logo: logo,
     kelas: kelasUnik,
@@ -1394,6 +1420,7 @@ function apiInit() {
     tugasan: getTugasanSemua(),
     guruKelas: getGuruKelasMap()
   };
+  return simpanCacheData("INIT", "utama", hasilInit, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1415,12 +1442,15 @@ function apiLoginGuru(nama, kata) {
 // ════════════════════════════════════════════════════════════════
 
 function apiKelas(namaKelas, peperiksaan) {
+  var bahagianCache = (peperiksaan || "") + "\u0001" + (namaKelas || "");
+  var cacheKelas = bacaCacheData("KELAS", bahagianCache);
+  if (cacheKelas) return cacheKelas;
   var sumberMurid = peperiksaan ? getMuridPeperiksaan(peperiksaan) : getMuridSemua();
   var muridKelas = sumberMurid.filter(function (m) {
     return m.kelas === namaKelas;
   });
   var subjekList = subjekUntukKelas(namaKelas, muridKelas);
-  return {
+  var hasilKelas = {
     tahap1: isTahap1Kelas(namaKelas),
     subjek: subjekList.map(function (s) { return { n: s.n, w: s.w }; }),
     murid: muridKelas.map(function (m, i) {
@@ -1429,6 +1459,7 @@ function apiKelas(namaKelas, peperiksaan) {
       return { bil: i + 1, nama: m.nama, jantina: m.jantina, ic: m.ic, ambil: ambil };
     })
   };
+  return simpanCacheData("KELAS", bahagianCache, hasilKelas, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1436,6 +1467,9 @@ function apiKelas(namaKelas, peperiksaan) {
 // ════════════════════════════════════════════════════════════════
 
 function apiMarkah(peperiksaan, namaKelas) {
+  var bahagianCache = (peperiksaan || "") + "\u0001" + (namaKelas || "");
+  var cacheMarkah = bacaCacheData("MARKAH", bahagianCache);
+  if (cacheMarkah) return cacheMarkah;
   var peta = {};
   _bacaDBMarkah().forEach(function (r) {
     if (r[0] !== peperiksaan || r[1] !== namaKelas) return;
@@ -1444,7 +1478,7 @@ function apiMarkah(peperiksaan, namaKelas) {
     if (!peta[id]) peta[id] = {};
     peta[id][r[3]] = { m: r[4], tp: r[5] };
   });
-  return peta;
+  return simpanCacheData("MARKAH", bahagianCache, peta, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1559,6 +1593,7 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
       if (lastRow > 1) sMk.getRange(2, 1, lastRow - 1, 9).clearContent();
       if (semua.length) sMk.getRange(2, 1, semua.length, 9).setValues(semua);
 
+      batalCacheData();
       return { ok: true, mesej: baru.length + " markah " + subjek +
                " (" + namaKelas + ") disimpan." };
     } finally {
@@ -1574,6 +1609,8 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
 // ════════════════════════════════════════════════════════════════
 
 function apiStatus(peperiksaan) {
+  var cacheStatus = bacaCacheData("STATUS", peperiksaan || "");
+  if (cacheStatus) return cacheStatus;
   var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
 
@@ -1632,7 +1669,8 @@ function apiStatus(peperiksaan) {
       return dlmT1 || dlmT2;
     });
   }
-  return { kelas: hasil, semuaSubjek: semuaSubjek, kunci: cfg ? cfg.kunci : false };
+  var hasilStatus = { kelas: hasil, semuaSubjek: semuaSubjek, kunci: cfg ? cfg.kunci : false };
+  return simpanCacheData("STATUS", peperiksaan || "", hasilStatus, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1640,6 +1678,8 @@ function apiStatus(peperiksaan) {
 // ════════════════════════════════════════════════════════════════
 
 function apiAnalisis(peperiksaan) {
+  var cacheAnalisis = bacaCacheData("ANALISIS", peperiksaan || "");
+  if (cacheAnalisis) return cacheAnalisis;
   var t     = getTetapan();
   var murid = getMuridPeperiksaan(peperiksaan);
   var db    = _bacaDBMarkah();
@@ -1754,11 +1794,12 @@ function apiAnalisis(peperiksaan) {
     });
   });
 
-  return {
+  var hasilAnalisis = {
     sekolah: t.sekolah, tahun: t.tahun, peperiksaan: peperiksaan,
     dijana: new Date().toLocaleString("ms-MY"),
     kelas: hasilKelas
   };
+  return simpanCacheData("ANALISIS", peperiksaan || "", hasilAnalisis, 21600);
 }
 
 // ════════════════════════════════════════════════════════════════

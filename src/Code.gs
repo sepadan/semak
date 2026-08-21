@@ -651,6 +651,69 @@ function getTetapan() {
   return t;
 }
 
+// ════════════════════════════════════════════════════════════════
+// CACHE DATA BACAAN (bukan cache sesi/login)
+// Cache ini hanya mempercepat paparan. Google Sheets kekal sumber sebenar dan
+// kegagalan/eviction cache sentiasa jatuh semula kepada bacaan Sheets biasa.
+// ════════════════════════════════════════════════════════════════
+var VERSI_CACHE_DATA = "v50";
+var KUNCI_REVISI_CACHE_DATA = "SEMAK_REVISI_CACHE_DATA";
+
+function _kunciCacheData(ruang, bahagian) {
+  var revisi = PropertiesService.getScriptProperties()
+    .getProperty(KUNCI_REVISI_CACHE_DATA) || "0";
+  var digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(bahagian || ""),
+    Utilities.Charset.UTF_8
+  );
+  return "SEMAK_" + VERSI_CACHE_DATA + "_" + ruang + "_" + revisi + "_" +
+    Utilities.base64EncodeWebSafe(digest).substring(0, 24);
+}
+
+function bacaCacheData(ruang, bahagian) {
+  try {
+    var mentah = CacheService.getScriptCache().get(_kunciCacheData(ruang, bahagian));
+    if (!mentah) return null;
+    var json = mentah.substring(1);
+    if (mentah.charAt(0) === "Z") {
+      json = Utilities.ungzip(Utilities.newBlob(
+        Utilities.base64Decode(json)
+      )).getDataAsString(Utilities.Charset.UTF_8);
+    }
+    return JSON.parse(json);
+  } catch (e) {
+    return null;
+  }
+}
+
+function simpanCacheData(ruang, bahagian, nilai, saat) {
+  try {
+    var json = JSON.stringify(nilai);
+    var muatan = "J" + json;
+    if (muatan.length > 90000) {
+      muatan = "Z" + Utilities.base64Encode(
+        Utilities.gzip(Utilities.newBlob(json, "application/json")).getBytes()
+      );
+    }
+    // Had satu nilai CacheService ialah kira-kira 100 KB.
+    if (muatan.length <= 95000) {
+      CacheService.getScriptCache().put(
+        _kunciCacheData(ruang, bahagian), muatan, saat || 300
+      );
+    }
+  } catch (e) {
+    // Cache tidak kritikal; abaikan dan terus guna data langsung.
+  }
+  return nilai;
+}
+
+function batalCacheData() {
+  PropertiesService.getScriptProperties().setProperty(
+    KUNCI_REVISI_CACHE_DATA, String(Date.now())
+  );
+}
+
 function semakAdmin(kataLaluan) {
   // Semua tindakan admin dari web app menggunakan token sesi enam jam.
   // Semakan kata laluan dikekalkan untuk keserasian fungsi lama dalam spreadsheet.
