@@ -428,7 +428,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
-| 2026-08-21 | `HEAD` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s | Tiada |
+| 2026-08-21 | `9a72caf` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s; UI GitHub v58: muatan sejuk 7.74s, muatan selepas cache 2.59s, data muncul dan tiada ralat konsol | Tiada |
 | 2026-08-21 | `da635ab` | 57 | Muat Chart.js secara async supaya data tidak menunggu carta | Ujian UI mengesan rujukan `d.ringkas` tidak sah; diperbetul segera dalam v58 | Tiada |
 | 2026-08-21 | `c1f9ad0` | 56 | Betulkan `kelasInfo` objek dalam ringkasan sementara | Ujian UI GitHub: 6.7s; dikenal pasti Chart.js menyekat paparan dan diperbaiki dalam v57 | Tiada |
 | 2026-08-21 | `785878b` | 55 | Alih analisis penuh keluar daripada laluan skrin pertama | Ujian live mengesan bentuk `kelasInfo` tidak serasi; diperbetul segera dalam v56 sebelum digunakan | Tiada |
