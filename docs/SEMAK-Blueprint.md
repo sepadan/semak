@@ -20,8 +20,9 @@
 | Script ID | `1gklRY6IzLZ0bIpHyt0M-fHuCMup_WjcDSI1M_YjVbAlJkXkj0ePT4AcY` |
 | Zon waktu | `Asia/Kuala_Lumpur` |
 
-Blueprint PDF bertarikh 20 Ogos 2026 ialah rekod lama. Fail Markdown ini ialah
-rujukan hidup yang perlu dikemas kini selepas setiap perubahan.
+Blueprint PDF bertarikh 20 Ogos 2026 ialah rekod lama; kandungan uniknya sudah
+digabungkan ke dalam fail ini pada 22 Ogos 2026. Fail Markdown ini ialah rujukan
+hidup tunggal yang perlu dikemas kini selepas setiap perubahan.
 
 ## 2. Peraturan yang tidak boleh dilanggar
 
@@ -131,6 +132,14 @@ diganti.
   berkuat kuasa.
 - Jangan membersihkan kod berganda bersama pembaikan kecil yang tidak berkaitan.
   Buat sebagai perubahan berasingan dengan ujian regresi lengkap.
+- `appsscript.json` menggunakan skop `spreadsheets.currentonly`, iaitu skrip hanya
+  boleh membaca spreadsheet kontenanya sendiri. Mana-mana ciri baharu yang perlu
+  membaca spreadsheet lain (contohnya menarik data kehadiran ke dalam SEMAK)
+  memerlukan skop `spreadsheets` penuh dan kebenaran semula oleh setiap pengguna
+  serta pemilik pemicu.
+- `_bacaDBMarkah()` membaca keseluruhan sheet `MARKAH` pada setiap panggilan yang
+  tidak dilayan cache. Selepas beberapa sesi persekolahan, pertimbangkan arkib
+  peperiksaan lama ke sheet berasingan.
 
 ## 5. Skema data yang mesti dikekalkan
 
@@ -230,6 +239,18 @@ Syarat menyimpan markah:
 Peperiksaan lama atau dikunci boleh dipaparkan bersama markah dan calon sejarah,
 tetapi tidak boleh diubah.
 
+Nota pelaksanaan `apiSimpanMarkah()`:
+
+- Kebenaran disemak oleh `_semakKebenaranSimpan()` sebelum sebarang tulisan.
+- Semua baris disahkan dahulu: markah `0-100` atau `TH`, TP `1-6`, IC wajib ada.
+  Jika satu baris gagal, keseluruhan simpanan dibatalkan.
+- Operasi tulis dilindungi `LockService.getScriptLock()` dengan tempoh menunggu
+  20 saat supaya dua guru tidak menulis serentak ke `MARKAH`.
+- Baris bagi kombinasi `peperiksaan + kelas + subjek` yang sama dibuang, kemudian
+  blok baharu ditulis semula. Baris yang markah dan TP kedua-duanya kosong tidak
+  disimpan.
+- Lajur `GURU` diisi `ADMIN` untuk admin, atau nama guru daripada sesi.
+
 ## 8. Sesi login - pelaksanaan semasa
 
 Punca pepijat 21 Ogos 2026: `CacheService` membuang token baru serta-merta dalam
@@ -292,6 +313,44 @@ kelas-subjek yang dibenarkan oleh peperiksaan aktif.
 Semua fungsi yang perlu dipanggil dari GitHub Pages mesti berada dalam senarai
 putih `dibenarkan` di dalam `doPost()`.
 
+### Bentuk pulangan `apiAnalisis(peperiksaan)`
+
+Objek ini ialah sumber tunggal untuk dashboard, semua cetakan dan penyambung
+Dashboard SePadan. Jangan tukar nama medan tanpa mengemas kini ketiga-tiganya.
+
+```json
+{
+  "sekolah": "SK PAYA REDAN",
+  "tahun": "2026",
+  "peperiksaan": "PENTAKSIRAN SUMATIF 3",
+  "dijana": "21/08/2026, 20:56:00",
+  "kelas": [{
+    "nama": "4 BIJAK",
+    "tahap1": false,
+    "murid": [{
+      "bil": 1, "nama": "...", "jantina": "L",
+      "rekod": [{ "subjek": "B. MELAYU", "markah": 88, "gred": "A", "tp": 5 }],
+      "purata": 72.4, "gpmp": 2.13,
+      "lulus": 8, "gagal": 0, "gredA": 3, "th": 0, "ambil": 8, "rank": 4
+    }],
+    "subjek": [{
+      "subjek": "B. MELAYU", "warna": "#fce5cd",
+      "A": 6, "B": 9, "C": 7, "D": 3, "E": 1, "F": 0, "th": 1,
+      "lulus": 26, "gagal": 0, "ambil": 26,
+      "gpmp": 2.31, "purata": 68.2, "pLulus": 100
+    }],
+    "ringkasan": {
+      "jumlahMurid": 28, "lelaki": 15, "perempuan": 13,
+      "gpmp": 2.44, "pLulus": 96.7, "gredA": 22, "th": 3
+    }
+  }]
+}
+```
+
+- `gpmp` peringkat kelas dikira sebagai purata berwajaran GPMP subjek mengikut
+  bilangan rekod diambil, bukan purata mudah.
+- `rank` bergantung pada `purata` markah; murid tanpa markah mendapat `rank: null`.
+
 ## 11. Formula
 
 ### Gred
@@ -320,6 +379,38 @@ putih `dibenarkan` di dalam `doPost()`.
 Tahun 1-3 mengisi TP secara manual. TH dan kosong tidak dikira dalam GPMP,
 GPS atau peratus lulus.
 
+### Gred point
+
+`A=1, B=2, C=3, D=4, E=5, F=6`. Nilai lebih rendah lebih baik.
+
+- GPMP = purata gred point bagi satu subjek.
+- GPS = purata gred point bagi semua rekod bergred.
+- Peratus lulus = rekod gred A-E dibahagi rekod bergred, didarab 100.
+
+### Kelayakan subjek
+
+Tiga lapis penapis menentukan sama ada seorang murid mengambil sesuatu subjek.
+Kesemuanya berada dalam `Code.gs`.
+
+```text
+isTahap1Kelas(kelas)   aksara pertama nama kelas ialah 1, 2 atau 3
+isIslam(agama)         teks agama mengandungi "ISLAM"
+
+subjekUntukKelas(kelas, muridKelas)
+  buang subjek tahap2Sahaja bagi kelas Tahap 1
+  buang subjek tahap1Sahaja bagi kelas Tahap 2
+  buang subjek bukanIslamSahaja jika semua murid kelas beragama Islam
+
+muridAmbilSubjek(murid, subjek)
+  subjek islamSahaja      -> hanya murid Islam
+  subjek bukanIslamSahaja -> hanya murid bukan Islam
+```
+
+Lapis ketiga ialah konfigurasi peperiksaan: jika kelas mempunyai entri dalam JSON
+`PEPERIKSAAN!F`, hanya subjek yang tersenarai di situ dikira, walaupun murid layak
+mengambil subjek lain. `subjekCfgUntukKelas()` mengendalikan padanan ini dan jatuh
+balik kepada lajur C/D bagi rekod lama yang belum mempunyai JSON.
+
 ## 12. Cetakan
 
 Empat hasil cetak dijana di klien daripada `apiAnalisis()`:
@@ -345,6 +436,22 @@ tanpa mengemas kini penyambung `Semak.gs` dalam projek Dashboard SePadan:
 - Ambang gred dan TP.
 
 Tiada nama murid, IC atau markah individu boleh dieksport ke repo dashboard awam.
+
+Medan agregat yang dijana oleh `Semak.gs` ke dalam `data.json` dashboard:
+
+| Medan | Kandungan |
+|---|---|
+| `gps`, `peratus_lulus` | Angka sekolah bagi peperiksaan yang dipaparkan |
+| `peperiksaan` | Nama peperiksaan sumber, dipapar sebagai nota tab Akademik |
+| `mata_pelajaran[]` | `{mp, gpmp, peratus_a, peratus_lulus}` |
+| `ikut_kelas[]` | `{kelas, gps, peratus_lulus, murid}` |
+| `pbd_tahap[]` | Bilangan rekod murid x subjek mengikut TP1-TP6 |
+| `trend_gps[]` | `{penilaian, penilaian_penuh, gps}` bagi setiap peperiksaan bermarkah |
+| `peperiksaan_semua[]` | Blok penuh setiap peperiksaan; menghidupkan pemilih peperiksaan dalam tab Akademik dashboard |
+
+Jika satu peperiksaan baharu ditambah atau nama peperiksaan diubah, dashboard
+mengikutinya secara automatik pada push berikutnya. Yang memecahkan dashboard
+ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 
 ## 14. Ujian pengesahan
 
@@ -428,6 +535,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
+| 2026-08-22 | - | - | Gabungkan lima bahagian daripada blueprint PDF 20 Ogos ke dalam fail ini: bentuk pulangan `apiAnalisis`, peraturan kelayakan subjek, nota `LockService` pada simpan markah, had skop OAuth `spreadsheets.currentonly`, dan senarai medan agregat dashboard termasuk `peperiksaan_semua` | Dokumentasi sahaja; kandungan disemak semula terhadap `Code.gs`, `AppBackend.gs` dan `Semak.gs`. Tiada kod diubah | Tiada |
 | 2026-08-21 | `9a72caf` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s; UI GitHub v58: muatan sejuk 7.74s, muatan selepas cache 2.59s, data muncul dan tiada ralat konsol | Tiada |
 | 2026-08-21 | `da635ab` | 57 | Muat Chart.js secara async supaya data tidak menunggu carta | Ujian UI mengesan rujukan `d.ringkas` tidak sah; diperbetul segera dalam v58 | Tiada |
 | 2026-08-21 | `c1f9ad0` | 56 | Betulkan `kelasInfo` objek dalam ringkasan sementara | Ujian UI GitHub: 6.7s; dikenal pasti Chart.js menyekat paparan dan diperbaiki dalam v57 | Tiada |
