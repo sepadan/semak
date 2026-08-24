@@ -1,8 +1,21 @@
-# SEMAK - Blueprint Utama untuk AI dan Pembangun
+# Blueprint SEMAK — Sistem Markah SK Paya Redan
 
-> **Fail rujukan utama projek.** ChatGPT, Claude atau pembangun yang menyambung
-> kerja mesti membaca fail ini dahulu. Setiap pembaikan fungsi mesti mengemas
-> kini kod **dan** bahagian `Rekod perubahan` dalam fail ini pada commit yang sama.
+> ### 📍 Fail ini ialah **jejari**, bukan hab
+>
+> Ia menerangkan **dalaman SEMAK sahaja**.
+>
+> **Hab ekosistem:** <https://sepadan.github.io/dashboard/BLUEPRINT.md>
+> (dalam repo: `sepadan/dashboard` → `BLUEPRINT.md`)
+>
+> Baca hab dahulu. Ia memegang peraturan merentas sistem, kontrak data antara
+> sistem, akaun dan rahsia, serta **daftar isu**.
+>
+> **Fail ini tidak menyimpan senarai isu.** Setiap perkara yang belum selesai —
+> bagi mana-mana sistem — dicatat dalam **bahagian 8 hab**. Jangan mulakan satu
+> di sini. Dua senarai isu bermakna dua versi kebenaran, dan yang kedua akan
+> bercanggah dalam masa beberapa minggu tanpa sesiapa perasan.
+>
+> Fail ini juga **tidak membuat kenyataan status tentang sistem lain**.
 
 ## 1. Status semasa
 
@@ -21,8 +34,11 @@
 | Zon waktu | `Asia/Kuala_Lumpur` |
 
 Blueprint PDF bertarikh 20 Ogos 2026 ialah rekod lama; kandungan uniknya sudah
-digabungkan ke dalam fail ini pada 22 Ogos 2026. Fail Markdown ini ialah rujukan
-hidup tunggal yang perlu dikemas kini selepas setiap perubahan.
+digabungkan ke dalam fail ini pada 22 Ogos 2026 dan salinan PDF itu sudah
+dibuang.
+
+Fail ini rujukan hidup bagi **dalaman SEMAK**. Untuk keadaan ekosistem dan
+senarai isu, lihat hab.
 
 ## 2. Peraturan yang tidak boleh dilanggar
 
@@ -574,6 +590,7 @@ ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 4. Buat perubahan sekecil yang perlu dan jangan ubah data.
 5. Jalankan ujian yang sepadan dengan risiko perubahan.
 6. Kemas kini bahagian status, ujian dan rekod perubahan dalam fail ini.
+   Isu yang belum selesai dicatat dalam **bahagian 8 hab**, bukan di sini.
 7. Commit kod dan blueprint bersama-sama ke GitHub.
 8. Salin versi sama ke Apps Script.
 9. Deploy sebagai **New version** pada deployment ID sedia ada.
