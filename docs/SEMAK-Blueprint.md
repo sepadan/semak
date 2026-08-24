@@ -9,9 +9,9 @@
 | Perkara | Nilai |
 |---|---|
 | Sistem | SEMAK - Sistem Markah SK Paya Redan |
-| Tarikh disahkan | 21 Ogos 2026 |
-| Commit kod fungsi terkini | `HEAD` - Cache berlapis dan muatan selari seluruh sistem |
-| Deployment Apps Script | Versi 52 |
+| Tarikh disahkan | 24 Ogos 2026 |
+| Commit kod fungsi terkini | `HEAD` - PWA SEMAK v1.0.0 pada GitHub Pages |
+| Deployment Apps Script | Versi 58; tidak berubah untuk kerja PWA frontend |
 | Deployment ID | `AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H` |
 | URL pengguna | <https://sepadan.github.io/semak/> |
 | URL API | <https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec> |
@@ -47,7 +47,8 @@ hidup tunggal yang perlu dikemas kini selepas setiap perubahan.
 ```text
 GitHub Pages: sepadan.github.io/semak
         |
-        | index.html memuat src/App.html
+        | index.html + manifest + Service Worker
+        | memuat src/App.html dan mengemas kini PWA secara automatik
         | App.html menghantar RPC melalui POST borang tersembunyi
         v
 Apps Script Web App: doPost / fungsi api*
@@ -61,6 +62,27 @@ Google Sheets SEMAK v1
 
 Sistem tiada pangkalan data atau pelayan lain. Google Sheets ialah pangkalan data
 tunggal. Apps Script ialah backend. GitHub Pages ialah paparan pengguna.
+
+### PWA GitHub Pages
+
+- Nama pemasangan ialah `SEMAK — Sistem Markah SK Paya Redan`; versi paparan
+  `SEMAK v1.0.0 · PWA`.
+- Ikon PWA menggunakan lambang sekolah dengan lencana biru `SEMAK`. Saiz 192,
+  512, maskable 512, Apple 180 serta favicon 32/48 disediakan.
+- `pwa.js` mendaftar Service Worker dengan `updateViaCache: 'none'` dan memanggil
+  `registration.update()` setiap kali SEMAK dibuka.
+- Service Worker memasang versi baharu melalui `skipWaiting()` dan
+  `clients.claim()`, tetapi halaman semasa **tidak dimuat semula secara paksa**.
+  Ini sengaja dibuat supaya markah yang sedang ditaip tidak hilang. Versi baharu
+  digunakan apabila SEMAK dibuka semula.
+- Cache PWA hanya mengandungi 15 fail statik: bingkai, `App.html`, manifest,
+  skrip PWA, ikon dan halaman luar talian. Permintaan Apps Script/Google,
+  markah, sesi dan data murid tidak dipintas atau dimasukkan ke cache PWA.
+- Ketika internet terputus, panel luar talian menutup iframe tanpa membuangnya,
+  supaya input semasa kekal dalam ingatan dan interaksi/simpanan disekat sehingga
+  talian kembali. SEMAK tidak menyediakan simpan atau segerak markah luar talian.
+- Setiap perubahan frontend mesti menaikkan ID binaan pada URL `pwa.js`,
+  `CACHE_VERSION` dan, jika `App.html` berubah, nombor `?v=` iframe bersama-sama.
 
 ### Dua cara `App.html` berjalan
 
@@ -114,6 +136,11 @@ diganti.
 | Fail | Tanggungjawab |
 |---|---|
 | `index.html` | Bingkai penuh yang memuatkan `src/App.html` di GitHub Pages |
+| `manifest.webmanifest` | Nama, warna, ikon dan skop pemasangan PWA |
+| `pwa.js` | Pendaftaran/kemas kini PWA dan panel sambungan |
+| `service-worker.js` | Cache cangkerang statik, pembersihan cache lama dan fallback |
+| `offline.html` | Halaman selamat apabila laluan belum dicache dan internet tiada |
+| `icons/` | Ikon SEMAK untuk Android, iOS dan pelayar |
 | `src/Code.gs` | Pemalar, akses data, formula, pemasangan, segerak dan backup |
 | `src/AppBackend.gs` | Login, sesi, semua API web, kawalan akses, `doGet`/`doPost` |
 | `src/CalonBackend.gs` | Snapshot calon bagi setiap peperiksaan |
@@ -493,6 +520,23 @@ ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 - Dashboard GitHub Pages berjaya memuat data daripada deployment versi 48.
 - Tiada markah atau data murid diubah semasa ujian.
 
+### Keputusan PWA - 24 Ogos 2026
+
+- Laman produksi sebelum perubahan disahkan belum PWA: tiada manifest,
+  `apple-touch-icon`, favicon atau Service Worker.
+- Manifest JSON, `pwa.js`, `service-worker.js` dan empat skrip dalaman HTML
+  lulus semakan sintaks.
+- Keenam-enam ikon mempunyai dimensi tepat: 32, 48, 180, 192 dan dua ikon 512.
+- Ujian tempatan viewport 390×844 mencapai status PWA `sedia`, memuat iframe
+  `App.html?v=58`, memaparkan `SEMAK v1.0.0 · PWA` dan tidak menunjukkan panel
+  luar talian ketika sambungan ada.
+- Semua 15 aset `APP_SHELL` memberi HTTP 200. Senarai cache tidak mempunyai
+  alamat `script.google.com` atau `googleusercontent.com`.
+- Selepas pelayan statik dihentikan, rangka cache masih dibuka dan laluan yang
+  belum dicache memaparkan `offline.html` bersama ikon SEMAK dan butang cuba lagi.
+- Backend, Apps Script, spreadsheet, markah dan data murid tidak diubah.
+- Penerbitan serta ujian GitHub Pages produksi masih menunggu push.
+
 ### Senarai semak wajib selepas perubahan
 
 - [ ] Sintaks `App.html`, `AppBackend.gs`, `Code.gs` dan `CalonBackend.gs` lulus.
@@ -511,6 +555,9 @@ ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 - [ ] GitHub dan Apps Script sepadan.
 - [ ] Deployment sedia ada dikemas kini dan URL kekal.
 - [ ] Blueprint ini dikemas kini dalam commit yang sama.
+- [ ] Manifest, Service Worker dan semua ikon PWA memberi HTTP 200.
+- [ ] Cache PWA tidak mengandungi URL API, markah, sesi atau data murid.
+- [ ] Versi binaan `pwa.js`, `CACHE_VERSION` dan iframe selaras.
 
 ## 15. Prosedur kerja untuk ChatGPT, Claude atau pembangun
 
@@ -525,6 +572,10 @@ ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 9. Deploy sebagai **New version** pada deployment ID sedia ada.
 10. Uji URL GitHub Pages dan catat hasilnya di sini.
 
+Untuk perubahan yang hanya melibatkan `index.html`, manifest, ikon, `pwa.js`,
+Service Worker atau halaman luar talian, langkah 8-9 tidak diperlukan kerana
+tiada fail `src/` berubah. GitHub Pages sahaja perlu diterbitkan dan diuji.
+
 Format catatan perubahan:
 
 ```text
@@ -535,6 +586,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
+| 2026-08-24 | `HEAD` | 58 (tidak berubah) | Jadikan SEMAK PWA v1.0.0: ikon berasaskan lambang sekolah, manifest Android/iOS, auto-update selamat tanpa muat semula paksa, cache cangkerang statik dan paparan luar talian | Sintaks/manifest/6 ikon lulus; tempatan 390×844 status `sedia`; 15 aset HTTP 200; API/data tiada dalam cache; fallback tanpa pelayan lulus | Tiada; fail `src/` dan backend tidak berubah |
 | 2026-08-22 | - | - | Gabungkan lima bahagian daripada blueprint PDF 20 Ogos ke dalam fail ini: bentuk pulangan `apiAnalisis`, peraturan kelayakan subjek, nota `LockService` pada simpan markah, had skop OAuth `spreadsheets.currentonly`, dan senarai medan agregat dashboard termasuk `peperiksaan_semua` | Dokumentasi sahaja; kandungan disemak semula terhadap `Code.gs`, `AppBackend.gs` dan `Semak.gs`. Tiada kod diubah | Tiada |
 | 2026-08-21 | `9a72caf` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s; UI GitHub v58: muatan sejuk 7.74s, muatan selepas cache 2.59s, data muncul dan tiada ralat konsol | Tiada |
 | 2026-08-21 | `da635ab` | 57 | Muat Chart.js secara async supaya data tidak menunggu carta | Ujian UI mengesan rujukan `d.ringkas` tidak sah; diperbetul segera dalam v58 | Tiada |

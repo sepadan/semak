@@ -3,7 +3,7 @@
 Sistem permarkahan sekolah rendah berasaskan **Google Apps Script** + **Google Sheets**,
 dipapar sebagai Web App. Dibangunkan untuk **SK Paya Redan**.
 
-- Web App: https://semak-skpr.web.app/
+- Web App/PWA: https://sepadan.github.io/semak/
 - Pangkalan data: Google Sheets (`SEMAK v1`)
 
 ---
@@ -31,6 +31,12 @@ Sesi disahkan melalui token rawak 6 jam dalam `ScriptProperties`, dengan
 semak/
 ├─ AGENTS.md               # arahkan ChatGPT/Codex kepada blueprint utama
 ├─ CLAUDE.md               # arahkan Claude kepada blueprint utama
+├─ index.html              # bingkai GitHub Pages dan status versi PWA
+├─ manifest.webmanifest    # identiti pemasangan Android/iPhone
+├─ pwa.js                  # pemasangan + semakan kemas kini automatik
+├─ service-worker.js       # cache fail aplikasi sahaja, bukan data/markah
+├─ offline.html            # mesej apabila internet tiada
+├─ icons/                  # ikon SEMAK 32/48/180/192/512
 ├─ src/                     # kod yang di-push ke Apps Script (rootDir clasp)
 │  ├─ Code.gs               # teras: konfigurasi, akses data, pemasangan, backup
 │  ├─ AppBackend.gs         # API web app (api*) + kawalan akses
@@ -45,6 +51,18 @@ semak/
 ├─ LICENSE
 └─ README.md
 ```
+
+## Pemasangan PWA
+
+Versi semasa ialah **SEMAK v1.0.0 · PWA**. Pada Android gunakan pilihan
+**Install app/Tambah ke skrin utama**. Pada iPhone buka melalui Safari → Share →
+**Add to Home Screen**.
+
+SEMAK menyemak versi baharu setiap kali dibuka dan memasangnya secara automatik.
+Halaman yang sedang digunakan tidak dimuat semula secara paksa supaya markah
+yang belum disimpan tidak hilang; versi baharu digunakan apabila aplikasi dibuka
+semula. PWA hanya mencache fail statik dan tidak mencache markah, token, sesi,
+data murid atau jawapan Apps Script.
 
 > **Menyambung kerja dengan ChatGPT atau Claude?** Baca
 > [`docs/SEMAK-Blueprint.md`](docs/SEMAK-Blueprint.md) dahulu. Setiap perubahan
