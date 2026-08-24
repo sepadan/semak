@@ -535,7 +535,14 @@ ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 - Selepas pelayan statik dihentikan, rangka cache masih dibuka dan laluan yang
   belum dicache memaparkan `offline.html` bersama ikon SEMAK dan butang cuba lagi.
 - Backend, Apps Script, spreadsheet, markah dan data murid tidak diubah.
-- Penerbitan serta ujian GitHub Pages produksi masih menunggu push.
+- GitHub Pages run #35 berjaya untuk commit `485bf96`. Produksi menghidangkan
+  manifest, Service Worker, halaman luar talian, enam ikon dan `App.html?v=58`
+  dengan HTTP 200; versi cache ialah `semak-shell-v1.0.0-20260824-4` dan tiada
+  URL API/data dalam senarai cache.
+- Ujian produksi Edge pada viewport 390×844 mencapai status PWA `sedia`, berada
+  di bawah kawalan Service Worker, memuat bingkai `SEMAK — Sistem Markah` dan
+  tamat tanpa ralat JavaScript. Laluan tidak wujud ketika rangkaian disekat
+  memaparkan halaman luar talian serta ikon SEMAK.
 
 ### Senarai semak wajib selepas perubahan
 
@@ -554,10 +561,10 @@ ialah perubahan struktur sheet dalam senarai di atas, bukan perubahan data.
 - [ ] Tiada data sebenar berubah semasa ujian teknikal.
 - [ ] GitHub dan Apps Script sepadan.
 - [ ] Deployment sedia ada dikemas kini dan URL kekal.
-- [ ] Blueprint ini dikemas kini dalam commit yang sama.
-- [ ] Manifest, Service Worker dan semua ikon PWA memberi HTTP 200.
-- [ ] Cache PWA tidak mengandungi URL API, markah, sesi atau data murid.
-- [ ] Versi binaan `pwa.js`, `CACHE_VERSION` dan iframe selaras.
+- [x] Blueprint ini dikemas kini dalam commit yang sama.
+- [x] Manifest, Service Worker dan semua ikon PWA memberi HTTP 200.
+- [x] Cache PWA tidak mengandungi URL API, markah, sesi atau data murid.
+- [x] Versi binaan `pwa.js`, `CACHE_VERSION` dan iframe selaras.
 
 ## 15. Prosedur kerja untuk ChatGPT, Claude atau pembangun
 
@@ -586,7 +593,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
-| 2026-08-24 | `HEAD` | 58 (tidak berubah) | Jadikan SEMAK PWA v1.0.0: ikon berasaskan lambang sekolah, manifest Android/iOS, auto-update selamat tanpa muat semula paksa, cache cangkerang statik dan paparan luar talian | Sintaks/manifest/6 ikon lulus; tempatan 390×844 status `sedia`; 15 aset HTTP 200; API/data tiada dalam cache; fallback tanpa pelayan lulus | Tiada; fail `src/` dan backend tidak berubah |
+| 2026-08-24 | `485bf96` | 58 (tidak berubah) | Jadikan SEMAK PWA v1.0.0: ikon berasaskan lambang sekolah, manifest Android/iOS, auto-update selamat tanpa muat semula paksa, cache cangkerang statik dan paparan luar talian | Sintaks/manifest/6 ikon lulus; tempatan 390×844 status `sedia`; produksi GitHub Pages run #35 berjaya; semua aset PWA HTTP 200; API/data tiada dalam cache; fallback tanpa pelayan lulus | Tiada; fail `src/` dan backend tidak berubah |
 | 2026-08-22 | - | - | Gabungkan lima bahagian daripada blueprint PDF 20 Ogos ke dalam fail ini: bentuk pulangan `apiAnalisis`, peraturan kelayakan subjek, nota `LockService` pada simpan markah, had skop OAuth `spreadsheets.currentonly`, dan senarai medan agregat dashboard termasuk `peperiksaan_semua` | Dokumentasi sahaja; kandungan disemak semula terhadap `Code.gs`, `AppBackend.gs` dan `Semak.gs`. Tiada kod diubah | Tiada |
 | 2026-08-21 | `9a72caf` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s; UI GitHub v58: muatan sejuk 7.74s, muatan selepas cache 2.59s, data muncul dan tiada ralat konsol | Tiada |
 | 2026-08-21 | `da635ab` | 57 | Muat Chart.js secara async supaya data tidak menunggu carta | Ujian UI mengesan rujukan `d.ringkas` tidak sah; diperbetul segera dalam v58 | Tiada |
