@@ -19,9 +19,10 @@ dipapar sebagai Web App. Dibangunkan untuk **SK Paya Redan**.
 | 🧩 Tugasan Saya | Guru tetapkan sendiri subjek yang diajar (sinkron dengan admin) |
 | ⚙️ Tetapan | Identiti sekolah, peperiksaan, tugasan guru, subjek, kelas, muat naik CSV murid |
 
-Senarai guru juga boleh digabungkan dari **Tetapan Guru HADIR**. Import ini
-tidak memadam guru atau kata laluan sedia ada, dan pengurusan guru terus dalam
-SEMAK kekal berfungsi seperti biasa.
+Senarai guru boleh dikemas kini dari SEMAK, HADIR atau AKSI. Tambah/edit
+menggabungkan rekod; sync penuh atau nyahaktif menyamakan senarai aktif pada
+ketiga-tiga sistem. Rekod yang tiada ditanda tidak aktif, bukan dipadam, supaya
+kata laluan, tugasan, markah dan sejarah kekal.
 
 Upload murid atau guru dalam SEMAK turut menyelaraskan data asas melalui HADIR
 ke AKSI. Markah, peperiksaan, subjek, tugasan, calon, sesi dan kata laluan tidak
@@ -62,7 +63,7 @@ semak/
 
 ## Pemasangan PWA
 
-Versi semasa ialah **SEMAK v1.1.0 · PWA**. Pada Android gunakan pilihan
+Versi semasa ialah **SEMAK v1.2.0 · PWA**. Pada Android gunakan pilihan
 **Install app/Tambah ke skrin utama**. Pada iPhone buka melalui Safari → Share →
 **Add to Home Screen**.
 

@@ -399,19 +399,20 @@ function pasangSistem() {
   }
   sP.setColumnWidth(6, 360);
 
-  // GURU (nama + kata laluan)
+  // GURU (nama + kata laluan + status; rekod tidak dipadam supaya sejarah kekal)
   var sG = ss.getSheetByName(SH_GURU);
   if (!sG) {
     sG = ss.insertSheet(SH_GURU);
-    sG.getRange(1, 1, 1, 2).setValues([["NAMA GURU", "KATA LALUAN"]])
+    sG.getRange(1, 1, 1, 3).setValues([["NAMA GURU", "KATA LALUAN", "STATUS"]])
       .setFontWeight("bold").setBackground("#1a237e").setFontColor("white");
     sG.setFrozenRows(1);
-    sG.setColumnWidth(1, 300); sG.setColumnWidth(2, 160);
+    sG.setColumnWidth(1, 300); sG.setColumnWidth(2, 160); sG.setColumnWidth(3, 120);
     sG.hideSheet(); // ada kata laluan — sembunyikan
   } else if (!sG.getRange("B1").getValue()) {
     sG.getRange("B1").setValue("KATA LALUAN")
       .setFontWeight("bold").setBackground("#1a237e").setFontColor("white");
   }
+  pastikanSkemaGuruSemak_(sG);
 
   // TUGASAN
   var sTg = ss.getSheetByName(SH_TUGASAN);
@@ -727,12 +728,14 @@ function semakAdmin(kataLaluan) {
 function getGuruSemua() {
   var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
   if (!sG) return [];
+  pastikanSkemaGuruSemak_(sG);
   var lastRow = sG.getLastRow();
   if (lastRow < 2) return [];
   var senarai = [];
-  sG.getRange(2, 1, lastRow - 1, 1).getValues().forEach(function (r) {
+  sG.getRange(2, 1, lastRow - 1, 3).getValues().forEach(function (r) {
     var v = r[0] ? r[0].toString().trim() : "";
-    if (v && senarai.indexOf(v) === -1) senarai.push(v);
+    var aktif = (r[2] || "AKTIF").toString().trim().toUpperCase() !== "TIDAK AKTIF";
+    if (v && aktif && senarai.indexOf(v) === -1) senarai.push(v);
   });
   return senarai;
 }
@@ -744,12 +747,72 @@ function getGuruKataMap() {
   if (!sG) return peta;
   var lastRow = sG.getLastRow();
   if (lastRow < 2) return peta;
-  sG.getRange(2, 1, lastRow - 1, 2).getValues().forEach(function (r) {
+  pastikanSkemaGuruSemak_(sG);
+  sG.getRange(2, 1, lastRow - 1, 3).getValues().forEach(function (r) {
     var nm = r[0] ? r[0].toString().trim() : "";
-    if (nm) peta[nm] = (r[1] === null || r[1] === undefined || r[1] === "")
+    var aktif = (r[2] || "AKTIF").toString().trim().toUpperCase() !== "TIDAK AKTIF";
+    if (nm && aktif) peta[nm] = (r[1] === null || r[1] === undefined || r[1] === "")
                        ? KATAGURU_LALAI : r[1].toString();
   });
   return peta;
+}
+
+function pastikanSkemaGuruSemak_(sG) {
+  if (!sG) throw new Error("Sheet GURU tidak wujud.");
+  if (sG.getMaxColumns() < 3) sG.insertColumnsAfter(sG.getMaxColumns(), 3 - sG.getMaxColumns());
+  if (!sG.getRange(1, 3).getValue()) {
+    sG.getRange(1, 3).setValue("STATUS");
+    if (sG.getLastRow() > 1) sG.getRange(2, 3, sG.getLastRow() - 1, 1).setValue("AKTIF");
+  }
+}
+
+function normalisasiNamaGuruSemak_(nilai) {
+  return (nilai || "").toString().trim().replace(/\s+/g, " ").toUpperCase().slice(0, 200);
+}
+
+function simpanSenaraiGuruSemak_(senaraiGuru, mod) {
+  mod = String(mod || "merge").toLowerCase() === "sync" ? "sync" : "merge";
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
+    pastikanSkemaGuruSemak_(sG);
+    var data = sG.getLastRow() > 1 ? sG.getRange(2, 1, sG.getLastRow() - 1, 3).getValues() : [];
+    var peta = {}, dilihat = {}, tambah = 0, kemasKini = 0, nyahaktif = 0, langkau = 0;
+    data.forEach(function (r, i) {
+      var nama = normalisasiNamaGuruSemak_(r[0]);
+      if (nama && peta[nama] === undefined) peta[nama] = i;
+    });
+    (senaraiGuru || []).forEach(function (item) {
+      var nama = normalisasiNamaGuruSemak_(item && typeof item === "object" ? item.nama : item);
+      if (!nama || dilihat[nama]) { langkau++; return; }
+      dilihat[nama] = true;
+      if (peta[nama] === undefined) {
+        peta[nama] = data.length;
+        data.push([nama, KATAGURU_LALAI, "AKTIF"]);
+        tambah++;
+      } else {
+        var r = data[peta[nama]];
+        if ((r[2] || "AKTIF").toString().trim().toUpperCase() === "TIDAK AKTIF") {
+          r[2] = "AKTIF";
+          kemasKini++;
+        } else langkau++;
+      }
+    });
+    if (mod === "sync") data.forEach(function (r) {
+      var nama = normalisasiNamaGuruSemak_(r[0]);
+      if (nama && !dilihat[nama] && (r[2] || "AKTIF").toString().trim().toUpperCase() !== "TIDAK AKTIF") {
+        r[2] = "TIDAK AKTIF";
+        nyahaktif++;
+      }
+    });
+    if (data.length) sG.getRange(2, 1, data.length, 3).setValues(data);
+    batalCacheData();
+    return { ok: true, tambah: tambah, kemasKini: kemasKini, nyahaktif: nyahaktif,
+      langkau: langkau, senarai: data.filter(function (r) {
+        return (r[2] || "AKTIF").toString().trim().toUpperCase() !== "TIDAK AKTIF";
+      }).map(function (r) { return normalisasiNamaGuruSemak_(r[0]); }) };
+  } finally { lock.releaseLock(); }
 }
 
 function semakGuru(nama, kata) {

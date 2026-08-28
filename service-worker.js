@@ -1,14 +1,14 @@
-// SEMAK v1.1.0 · PWA — cache fail aplikasi sahaja, bukan markah atau API.
-const CACHE_VERSION = 'semak-shell-v1.1.0-20260828-5';
+// SEMAK v1.2.0 · PWA — cache fail aplikasi sahaja, bukan markah atau API.
+const CACHE_VERSION = 'semak-shell-v1.2.0-20260828-6';
 const OFFLINE_URL = './offline.html';
 const APP_SHELL = [
   './',
   './index.html',
-  './src/App.html?v=60',
+  './src/App.html?v=61',
   OFFLINE_URL,
   './manifest.webmanifest',
-  './manifest.webmanifest?v=1.1.0',
-  './pwa.js?v=20260828-5',
+  './manifest.webmanifest?v=1.2.0',
+  './pwa.js?v=20260828-6',
   './icons/semak-192.png',
   './icons/semak-512.png',
   './icons/semak-maskable-512.png',

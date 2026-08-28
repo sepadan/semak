@@ -821,22 +821,11 @@ function apiSimpanGuru(senaraiGuru, guruBesar, kata, asalSync) {
     // Kekal serasi dengan panggilan lama: apiSimpanGuru(senaraiGuru, kata).
     if (kata === undefined) { kata = guruBesar; guruBesar = null; }
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
-    var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
-    if (!sG) return { ok: false, mesej: "Sheet GURU tidak wujud." };
-
-    var kataSedia = getGuruKataMap(); // kekalkan kata laluan guru sedia ada
-    var bersih = [];
+    var bersih = [], dilihat = {};
     (senaraiGuru || []).forEach(function (g) {
-      var v = (g || "").toString().trim().toUpperCase();
-      if (v && bersih.indexOf(v) === -1) bersih.push(v);
+      var v = normalisasiNamaGuruSemak_(g);
+      if (v && !dilihat[v]) { dilihat[v] = true; bersih.push(v); }
     });
-
-    var lastRow = sG.getLastRow();
-    if (lastRow > 1) sG.getRange(2, 1, lastRow - 1, 2).clearContent();
-    if (bersih.length)
-      sG.getRange(2, 1, bersih.length, 2).setValues(bersih.map(function (g) {
-        return [g, kataSedia.hasOwnProperty(g) ? kataSedia[g] : KATAGURU_LALAI];
-      }));
     if (guruBesar !== null && guruBesar !== undefined) {
       guruBesar = guruBesar.toString().trim().toUpperCase();
       if (!guruBesar || bersih.indexOf(guruBesar) === -1)
@@ -846,11 +835,13 @@ function apiSimpanGuru(senaraiGuru, guruBesar, kata, asalSync) {
       sT.getRange("A6").setValue("NAMA GURU BESAR").setFontWeight("bold");
       sT.getRange("B6").setValue(guruBesar);
     }
+    var hasil = simpanSenaraiGuruSemak_(bersih, "sync");
     var sync = String(asalSync || "").toUpperCase() === "HADIR" ? null :
-      sepadanHantarKeHadirSemak_("guru", bersih);
-    return { ok: true, mesej: bersih.length + " guru disimpan. " +
-             "Guru baharu diberi kata laluan lalai '" + KATAGURU_LALAI + "'.",
-             senarai: bersih, sync: sync };
+      sepadanHantarKeHadirSemak_("guru", hasil.senarai, "sync");
+    hasil.mesej = hasil.senarai.length + " guru aktif disimpan; " + hasil.nyahaktif +
+      " guru dinyahaktifkan. Kata laluan dan sejarah dikekalkan.";
+    hasil.sync = sync;
+    return hasil;
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -873,53 +864,28 @@ function apiSimpanGuruBesar(nama, kata) {
 
 // Gabung senarai guru dari sistem pusat tanpa memadam guru tempatan atau
 // menukar kata laluan yang sudah disesuaikan dalam SEMAK.
-function apiImportGuru(senaraiGuru, kata, asalSync) {
+function apiImportGuru(senaraiGuru, kata, asalSync, mod) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
-    if (!Array.isArray(senaraiGuru) || !senaraiGuru.length)
+    mod = String(mod || "merge").toLowerCase() === "sync" ? "sync" : "merge";
+    if (!Array.isArray(senaraiGuru) || (!senaraiGuru.length && mod !== "sync"))
       return { ok: false, mesej: "Tiada data guru diterima." };
     if (senaraiGuru.length > 1000)
       return { ok: false, mesej: "Senarai guru melebihi had 1,000 rekod." };
 
-    var guruSync = [];
-    var lock = LockService.getScriptLock();
-    lock.waitLock(20000);
-    var hasilImport;
-    try {
-      var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
-      if (!sG) return { ok: false, mesej: "Sheet GURU tidak wujud." };
-      var data = sG.getLastRow() > 1
-        ? sG.getRange(2, 1, sG.getLastRow() - 1, 2).getValues() : [];
-      var sedia = {}, dilihat = {}, baris = [], langkau = 0;
-      data.forEach(function (r) {
-        var nama = (r[0] || "").toString().trim().replace(/\s+/g, " ").toUpperCase();
-        if (nama) sedia[nama] = true;
-      });
-      senaraiGuru.forEach(function (item) {
-        var nama = (item && typeof item === "object" ? item.nama : item);
-        nama = (nama || "").toString().trim().replace(/\s+/g, " ").toUpperCase();
-        if (!nama || dilihat[nama]) { langkau++; return; }
-        dilihat[nama] = true;
-        guruSync.push(nama);
-        if (sedia[nama]) { langkau++; return; }
-        sedia[nama] = true;
-        baris.push([nama, KATAGURU_LALAI]);
-      });
-      if (baris.length) {
-        sG.getRange(sG.getLastRow() + 1, 1, baris.length, 2).setValues(baris);
-      }
-      hasilImport = { ok: true, tambah: baris.length, langkau: langkau,
-        mesej: baris.length + " guru baharu digabung. Kata laluan dan guru sedia ada dikekalkan." };
-    } finally { lock.releaseLock(); }
+    var hasilImport = simpanSenaraiGuruSemak_(senaraiGuru, mod);
+    hasilImport.mesej = hasilImport.tambah + " guru baharu, " + hasilImport.kemasKini +
+      " diaktifkan semula dan " + hasilImport.nyahaktif +
+      " dinyahaktifkan. Kata laluan dan sejarah dikekalkan.";
     if (String(asalSync || "").toUpperCase() !== "HADIR")
-      hasilImport.sync = sepadanHantarKeHadirSemak_("guru", guruSync);
+      hasilImport.sync = sepadanHantarKeHadirSemak_("guru", hasilImport.senarai, mod);
     return hasilImport;
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
 }
 
-function sepadanHantarKeHadirSemak_(jenis, senarai) {
+function sepadanHantarKeHadirSemak_(jenis, senarai, mod) {
   var props = PropertiesService.getScriptProperties();
   var rahsia = props.getProperty("SEPADAN_SYNC_SECRET");
   var url = props.getProperty("SEPADAN_HADIR_URL") ||
@@ -932,7 +898,7 @@ function sepadanHantarKeHadirSemak_(jenis, senarai) {
       payload: JSON.stringify({
         mode: "hadir",
         kaedah: jenis === "guru" ? "terimaSyncGuru" : "terimaSyncMurid",
-        argumen: [senarai || [], "SEMAK", rahsia]
+        argumen: [senarai || [], "SEMAK", rahsia, String(mod || "merge").toLowerCase()]
       })
     });
     var data = JSON.parse(respons.getContentText());
@@ -2341,22 +2307,11 @@ function apiSimpanGuru(senaraiGuru, guruBesar, kata, asalSync) {
     // Kekal serasi dengan panggilan lama: apiSimpanGuru(senaraiGuru, kata).
     if (kata === undefined) { kata = guruBesar; guruBesar = null; }
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
-    var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
-    if (!sG) return { ok: false, mesej: "Sheet GURU tidak wujud." };
-
-    var kataSedia = getGuruKataMap(); // kekalkan kata laluan guru sedia ada
-    var bersih = [];
+    var bersih = [], dilihat = {};
     (senaraiGuru || []).forEach(function (g) {
-      var v = (g || "").toString().trim().toUpperCase();
-      if (v && bersih.indexOf(v) === -1) bersih.push(v);
+      var v = normalisasiNamaGuruSemak_(g);
+      if (v && !dilihat[v]) { dilihat[v] = true; bersih.push(v); }
     });
-
-    var lastRow = sG.getLastRow();
-    if (lastRow > 1) sG.getRange(2, 1, lastRow - 1, 2).clearContent();
-    if (bersih.length)
-      sG.getRange(2, 1, bersih.length, 2).setValues(bersih.map(function (g) {
-        return [g, kataSedia.hasOwnProperty(g) ? kataSedia[g] : KATAGURU_LALAI];
-      }));
     if (guruBesar !== null && guruBesar !== undefined) {
       guruBesar = guruBesar.toString().trim().toUpperCase();
       if (!guruBesar || bersih.indexOf(guruBesar) === -1)
@@ -2366,11 +2321,13 @@ function apiSimpanGuru(senaraiGuru, guruBesar, kata, asalSync) {
       sT.getRange("A6").setValue("NAMA GURU BESAR").setFontWeight("bold");
       sT.getRange("B6").setValue(guruBesar);
     }
+    var hasil = simpanSenaraiGuruSemak_(bersih, "sync");
     var sync = String(asalSync || "").toUpperCase() === "HADIR" ? null :
-      sepadanHantarKeHadirSemak_("guru", bersih);
-    return { ok: true, mesej: bersih.length + " guru disimpan. " +
-             "Guru baharu diberi kata laluan lalai '" + KATAGURU_LALAI + "'.",
-             senarai: bersih, sync: sync };
+      sepadanHantarKeHadirSemak_("guru", hasil.senarai, "sync");
+    hasil.mesej = hasil.senarai.length + " guru aktif disimpan; " + hasil.nyahaktif +
+      " guru dinyahaktifkan. Kata laluan dan sejarah dikekalkan.";
+    hasil.sync = sync;
+    return hasil;
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }

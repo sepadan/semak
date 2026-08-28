@@ -560,7 +560,7 @@
       <div class="baris-pilih" style="margin-top:8px">
         <input type="text" id="guruNamaEdit" placeholder="Nama guru" style="min-width:320px" disabled>
         <button class="btn btn-kecil" id="btnKemaskiniGuru" onclick="kemaskiniGuruTerpilih()" disabled>✏️ Kemaskini</button>
-        <button class="btn btn-kecil btn-merah" id="btnPadamGuru" onclick="padamGuruTerpilih()" disabled>Padam</button>
+        <button class="btn btn-kecil btn-merah" id="btnPadamGuru" onclick="padamGuruTerpilih()" disabled>Nyahaktif</button>
       </div>
       <div class="baris-pilih" style="margin-top:8px">
         <input type="text" id="guruBaru" placeholder="Nama guru baharu" style="min-width:260px">
@@ -569,12 +569,16 @@
       </div>
       <div class="baris-pilih" style="margin-top:8px">
         <input type="file" id="csvGuru" accept=".csv,text/csv">
+        <select id="modCsvGuru">
+          <option value="merge">Gabung sahaja</option>
+          <option value="sync">Sync penuh</option>
+        </select>
         <button class="btn btn-kecil" onclick="uploadGuruCSV()">📥 Muat Naik CSV Guru</button>
       </div>
       <p style="font-size:8.5pt;color:#888;margin:4px 0 0">
         CSV guru: satu nama setiap baris (lajur pertama digunakan). Selepas muat naik,
-        semak melalui dropdown dan tekan Simpan Senarai. Senarai akan digabungkan
-        secara automatik ke HADIR dan AKSI tanpa menukar kata laluan sedia ada.</p>
+        semak melalui dropdown dan tekan Simpan Senarai. Sync penuh menyahaktifkan
+        guru yang tiada, tetapi tidak memadam kata laluan, tugasan atau sejarah.</p>
       <div class="baris-pilih" style="margin-top:14px">
         <label style="font-size:9.5pt;font-weight:bold">Nama Guru Besar:</label>
         <select id="guruBesar" style="min-width:280px"></select>
@@ -2201,9 +2205,9 @@ function kemaskiniGuruTerpilih() {
 }
 function padamGuruTerpilih() {
   var nama = document.getElementById("guruPilih").value;
-  if (!nama || !confirm('Padam "' + nama + '" daripada senarai guru?')) return;
+  if (!nama || !confirm('Nyahaktifkan "' + nama + '" dalam SEMAK, HADIR dan AKSI?\n\nKata laluan, tugasan dan sejarah akan dikekalkan.')) return;
   GURU_SEMENTARA.splice(GURU_SEMENTARA.indexOf(nama), 1); lukisDropdownGuru("");
-  st("stGuru", "✅ Guru telah dibuang. Tekan Simpan Senarai untuk simpan kekal.", "ok");
+  st("stGuru", "✅ Guru ditandakan untuk dinyahaktif. Tekan Simpan Senarai untuk sahkan dan selaras.", "ok");
 }
 function simpanGuru() { var g = GURU_SEMENTARA.slice(); google.script.run.withSuccessHandler(function (r) { var msg = r.mesej + (r.ok && r.sync ? (r.sync.ok ? " Semua sistem telah diselaraskan." : " SEMAK disimpan; penyelarasan sistem lain perlu diperiksa.") : ""); st("stGuru", (r.ok ? "✅ " : "❌ ") + msg, r.ok && (!r.sync || r.sync.ok) ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanGuru(g, document.getElementById("guruBesar").value, KATA); }
 function uploadGuruCSV() {
@@ -2212,8 +2216,14 @@ function uploadGuruCSV() {
   var baca = new FileReader();
   baca.onload = function () {
     var tambah = baca.result.split(/\r?\n/).map(function (b) { return b.split(",")[0].trim(); }).filter(Boolean);
-    tambah.forEach(function (n) { if (GURU_SEMENTARA.indexOf(n) === -1) GURU_SEMENTARA.push(n); });
-    lukisDropdownGuru(""); st("stGuru", "✅ Senarai daripada CSV dimuatkan. Tekan Simpan Senarai untuk simpan kekal.", "ok");
+    var mod = document.getElementById("modCsvGuru").value;
+    var unik = [];
+    tambah.forEach(function (n) { n = n.toUpperCase(); if (unik.indexOf(n) === -1) unik.push(n); });
+    var nyahaktif = GURU_SEMENTARA.filter(function (n) { return unik.indexOf(n) === -1; }).length;
+    if (mod === "sync" && !confirm("Pratonton sync penuh: " + nyahaktif + " guru akan dinyahaktifkan kerana tiada dalam CSV.\n\nSejarah dan kata laluan kekal. Teruskan?")) return;
+    if (mod === "sync") GURU_SEMENTARA = unik;
+    else unik.forEach(function (n) { if (GURU_SEMENTARA.indexOf(n) === -1) GURU_SEMENTARA.push(n); });
+    lukisDropdownGuru(""); st("stGuru", "✅ Pratonton sedia: " + GURU_SEMENTARA.length + " guru aktif, " + (mod === "sync" ? nyahaktif : 0) + " akan dinyahaktifkan. Tekan Simpan Senarai.", "ok");
   };
   baca.readAsText(fail);
 }
