@@ -22,9 +22,9 @@
 | Perkara | Nilai |
 |---|---|
 | Sistem | SEMAK - Sistem Markah SK Paya Redan |
-| Tarikh disahkan | 24 Ogos 2026 |
-| Commit kod fungsi terkini | `HEAD` - PWA SEMAK v1.0.0 pada GitHub Pages |
-| Deployment Apps Script | Versi 58; tidak berubah untuk kerja PWA frontend |
+| Tarikh disahkan | 28 Ogos 2026 |
+| Commit kod fungsi terkini | `HEAD` - import guru merge-only + PWA SEMAK v1.0.0 |
+| Deployment Apps Script | Versi 59 |
 | Deployment ID | `AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H` |
 | URL pengguna | <https://sepadan.github.io/semak/> |
 | URL API | <https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec> |
@@ -351,10 +351,16 @@ kelas-subjek yang dibenarkan oleh peperiksaan aktif.
 | `apiSimpanMarkah(...)` | Guru yang ditugaskan atau admin |
 | `apiSimpanTugasanGuru(...)` | Guru |
 | `apiLogout(token)` | Pengguna bersesi |
+| `apiImportGuru(senarai, kataAdmin)` | Integrasi HADIR; admin, merge-only |
 | Fungsi tetapan `apiTambah*`, `apiPadam*`, `apiSimpan*` | Admin |
 
 Semua fungsi yang perlu dipanggil dari GitHub Pages mesti berada dalam senarai
 putih `dibenarkan` di dalam `doPost()`.
+
+`apiImportGuru` menambah nama yang belum ada menggunakan tulisan pukal di bawah
+`ScriptLock`. Ia tidak mengosongkan tab `GURU`, tidak memadam guru yang tiada
+dalam muatan dan tidak menukar kata laluan guru sedia ada. Fungsi tetapan guru
+SEMAK yang lama kekal tersedia untuk kemas kini terus dalam sistem sendiri.
 
 ### Bentuk pulangan `apiAnalisis(peperiksaan)`
 
@@ -610,6 +616,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
+| 2026-08-28 | `HEAD` | 59 | Tambah `apiImportGuru` untuk penyelarasan guru merge-only daripada HADIR; kekalkan guru/kata laluan tempatan, kunci tulisan, append pukal, senarai putih RPC dan pembatalan cache | Sintaks `AppBackend.gs` dan ujian regresi import lulus; fail hidup disahkan sepadan; endpoint produksi menerima kaedah dan menolak kata laluan palsu sebelum tulisan | Tiada data guru sebenar diubah semasa ujian |
 | 2026-08-24 | `485bf96` | 58 (tidak berubah) | Jadikan SEMAK PWA v1.0.0: ikon berasaskan lambang sekolah, manifest Android/iOS, auto-update selamat tanpa muat semula paksa, cache cangkerang statik dan paparan luar talian | Sintaks/manifest/6 ikon lulus; tempatan 390×844 status `sedia`; produksi GitHub Pages run #35 berjaya; semua aset PWA HTTP 200; API/data tiada dalam cache; fallback tanpa pelayan lulus | Tiada; fail `src/` dan backend tidak berubah |
 | 2026-08-22 | - | - | Gabungkan lima bahagian daripada blueprint PDF 20 Ogos ke dalam fail ini: bentuk pulangan `apiAnalisis`, peraturan kelayakan subjek, nota `LockService` pada simpan markah, had skop OAuth `spreadsheets.currentonly`, dan senarai medan agregat dashboard termasuk `peperiksaan_semua` | Dokumentasi sahaja; kandungan disemak semula terhadap `Code.gs`, `AppBackend.gs` dan `Semak.gs`. Tiada kod diubah | Tiada |
 | 2026-08-21 | `9a72caf` | 58 | Muat Chart.js secara async dan betulkan rujukan ringkasan dalam `paparDashKelas`; kekalkan cache kelas+Status di latar | Sintaks lulus; live backend baca-sahaja: muatan awal 1.98s, analisis latar 7.27s, Isi Markah 1.29s, Status 1.66s; UI GitHub v58: muatan sejuk 7.74s, muatan selepas cache 2.59s, data muncul dan tiada ralat konsol | Tiada |

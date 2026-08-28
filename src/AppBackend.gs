@@ -869,6 +869,47 @@ function apiSimpanGuruBesar(nama, kata) {
   }
 }
 
+// Gabung senarai guru dari sistem pusat tanpa memadam guru tempatan atau
+// menukar kata laluan yang sudah disesuaikan dalam SEMAK.
+function apiImportGuru(senaraiGuru, kata) {
+  try {
+    if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
+    if (!Array.isArray(senaraiGuru) || !senaraiGuru.length)
+      return { ok: false, mesej: "Tiada data guru diterima." };
+    if (senaraiGuru.length > 1000)
+      return { ok: false, mesej: "Senarai guru melebihi had 1,000 rekod." };
+
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
+      if (!sG) return { ok: false, mesej: "Sheet GURU tidak wujud." };
+      var data = sG.getLastRow() > 1
+        ? sG.getRange(2, 1, sG.getLastRow() - 1, 2).getValues() : [];
+      var sedia = {}, dilihat = {}, baris = [], langkau = 0;
+      data.forEach(function (r) {
+        var nama = (r[0] || "").toString().trim().replace(/\s+/g, " ").toUpperCase();
+        if (nama) sedia[nama] = true;
+      });
+      senaraiGuru.forEach(function (item) {
+        var nama = (item && typeof item === "object" ? item.nama : item);
+        nama = (nama || "").toString().trim().replace(/\s+/g, " ").toUpperCase();
+        if (!nama || dilihat[nama] || sedia[nama]) { langkau++; return; }
+        dilihat[nama] = true;
+        sedia[nama] = true;
+        baris.push([nama, KATAGURU_LALAI]);
+      });
+      if (baris.length) {
+        sG.getRange(sG.getLastRow() + 1, 1, baris.length, 2).setValues(baris);
+      }
+      return { ok: true, tambah: baris.length, langkau: langkau,
+        mesej: baris.length + " guru baharu digabung. Kata laluan dan guru sedia ada dikekalkan." };
+    } finally { lock.releaseLock(); }
+  } catch (err) {
+    return { ok: false, mesej: "Ralat: " + err.message };
+  }
+}
+
 function apiSetKataGuru(nama, baru, kata) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
@@ -1368,6 +1409,7 @@ function doPost(e) {
       apiPadamPeperiksaan: apiPadamPeperiksaan,
       apiPadamSubjek: apiPadamSubjek,
       apiSemakSesi: apiSemakSesi,
+      apiImportGuru: apiImportGuru,
       apiSimpanGuru: apiSimpanGuru,
       apiSimpanGuruBesar: apiSimpanGuruBesar,
       apiSimpanLogo: apiSimpanLogo,
@@ -1394,7 +1436,7 @@ function doPost(e) {
     // Semua perubahan berjaya menukar revisi cache supaya bacaan seterusnya
     // tidak mungkin memaparkan konfigurasi atau markah lama.
     if (kaedah !== "apiSimpanMarkah" &&
-        /^api(?:Simpan|Tambah|Padam|Upload|Tetapkan|Segerak)/.test(kaedah) &&
+        /^api(?:Simpan|Tambah|Padam|Upload|Import|Tetapkan|Segerak)/.test(kaedah) &&
         (!hasil || hasil.ok !== false)) {
       batalCacheData();
     }

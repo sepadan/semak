@@ -19,6 +19,10 @@ dipapar sebagai Web App. Dibangunkan untuk **SK Paya Redan**.
 | 🧩 Tugasan Saya | Guru tetapkan sendiri subjek yang diajar (sinkron dengan admin) |
 | ⚙️ Tetapan | Identiti sekolah, peperiksaan, tugasan guru, subjek, kelas, muat naik CSV murid |
 
+Senarai guru juga boleh digabungkan dari **Tetapan Guru HADIR**. Import ini
+tidak memadam guru atau kata laluan sedia ada, dan pengurusan guru terus dalam
+SEMAK kekal berfungsi seperti biasa.
+
 **Peranan:** Admin (akses penuh) dan Guru (hanya kelas + subjek yang ditugaskan).
 Sesi disahkan melalui token rawak 6 jam dalam `ScriptProperties`, dengan
 `CacheService` sebagai laluan pantas — kata laluan tidak disimpan dalam pelayar.
