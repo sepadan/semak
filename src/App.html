@@ -573,7 +573,8 @@
       </div>
       <p style="font-size:8.5pt;color:#888;margin:4px 0 0">
         CSV guru: satu nama setiap baris (lajur pertama digunakan). Selepas muat naik,
-        semak melalui dropdown dan tekan Simpan Senarai.</p>
+        semak melalui dropdown dan tekan Simpan Senarai. Senarai akan digabungkan
+        secara automatik ke HADIR dan AKSI tanpa menukar kata laluan sedia ada.</p>
       <div class="baris-pilih" style="margin-top:14px">
         <label style="font-size:9.5pt;font-weight:bold">Nama Guru Besar:</label>
         <select id="guruBesar" style="min-width:280px"></select>
@@ -602,7 +603,8 @@
         <p id="previewMurid" style="font-size:9pt;color:#555"></p>
       </div>
       <p style="font-size:8.5pt;color:#888;margin:8px 0 0">
-        ⚠️ Senarai murid sedia ada akan DIGANTIKAN sepenuhnya. Markah TIDAK terjejas
+        ⚠️ Senarai murid SEMAK akan DIGANTIKAN sepenuhnya dan data asas turut
+        diselaraskan ke HADIR serta AKSI. Markah TIDAK terjejas
         (dipadankan semula melalui IC/MyKad). Baris prasekolah dilangkau automatik.</p>
       <div class="status" id="stMurid"></div>
     </div>
@@ -2203,7 +2205,7 @@ function padamGuruTerpilih() {
   GURU_SEMENTARA.splice(GURU_SEMENTARA.indexOf(nama), 1); lukisDropdownGuru("");
   st("stGuru", "✅ Guru telah dibuang. Tekan Simpan Senarai untuk simpan kekal.", "ok");
 }
-function simpanGuru() { var g = GURU_SEMENTARA.slice(); google.script.run.withSuccessHandler(function (r) { st("stGuru", (r.ok ? "✅ " : "❌ ") + r.mesej, r.ok ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanGuru(g, document.getElementById("guruBesar").value, KATA); }
+function simpanGuru() { var g = GURU_SEMENTARA.slice(); google.script.run.withSuccessHandler(function (r) { var msg = r.mesej + (r.ok && r.sync ? (r.sync.ok ? " Semua sistem telah diselaraskan." : " SEMAK disimpan; penyelarasan sistem lain perlu diperiksa.") : ""); st("stGuru", (r.ok ? "✅ " : "❌ ") + msg, r.ok && (!r.sync || r.sync.ok) ? "ok" : "err"); if (r.ok) segarkanInit(muatTetapan); }).apiSimpanGuru(g, document.getElementById("guruBesar").value, KATA); }
 function uploadGuruCSV() {
   var fail = document.getElementById("csvGuru").files[0];
   if (!fail) { st("stGuru", "Sila pilih fail CSV terlebih dahulu.", "err"); return; }
@@ -2456,7 +2458,9 @@ function uploadMuridCSV() {
     KELAS_CACHE = {}; ANALISIS = null;
     segarkanInit(function () {
       muatTetapan();
-      st("stMurid", "✅ " + r.mesej + " Senarai calon peperiksaan aktif turut dikemaskini.", "ok");
+      st("stMurid", "✅ " + r.mesej + " Senarai calon peperiksaan aktif turut dikemaskini. " +
+        (r.sync && r.sync.ok === false ? "SEMAK disimpan; penyelarasan sistem lain perlu diperiksa." :
+          "Semua sistem telah diselaraskan."), r.sync && r.sync.ok === false ? "err" : "ok");
     });
   }).withFailureHandler(function (e) {
     btn.disabled = false;

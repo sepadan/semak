@@ -23,6 +23,10 @@ Senarai guru juga boleh digabungkan dari **Tetapan Guru HADIR**. Import ini
 tidak memadam guru atau kata laluan sedia ada, dan pengurusan guru terus dalam
 SEMAK kekal berfungsi seperti biasa.
 
+Upload murid atau guru dalam SEMAK turut menyelaraskan data asas melalui HADIR
+ke AKSI. Markah, peperiksaan, subjek, tugasan, calon, sesi dan kata laluan tidak
+dikongsi; semua syarat serta kebenaran SEMAK terus berkuat kuasa.
+
 **Peranan:** Admin (akses penuh) dan Guru (hanya kelas + subjek yang ditugaskan).
 Sesi disahkan melalui token rawak 6 jam dalam `ScriptProperties`, dengan
 `CacheService` sebagai laluan pantas — kata laluan tidak disimpan dalam pelayar.
@@ -58,7 +62,7 @@ semak/
 
 ## Pemasangan PWA
 
-Versi semasa ialah **SEMAK v1.0.0 · PWA**. Pada Android gunakan pilihan
+Versi semasa ialah **SEMAK v1.1.0 · PWA**. Pada Android gunakan pilihan
 **Install app/Tambah ke skrin utama**. Pada iPhone buka melalui Safari → Share →
 **Add to Home Screen**.
 

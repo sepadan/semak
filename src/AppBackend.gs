@@ -816,7 +816,7 @@ function apiPadamPeperiksaan(nama, buatBackupDulu, kata) {
   }
 }
 
-function apiSimpanGuru(senaraiGuru, guruBesar, kata) {
+function apiSimpanGuru(senaraiGuru, guruBesar, kata, asalSync) {
   try {
     // Kekal serasi dengan panggilan lama: apiSimpanGuru(senaraiGuru, kata).
     if (kata === undefined) { kata = guruBesar; guruBesar = null; }
@@ -846,9 +846,11 @@ function apiSimpanGuru(senaraiGuru, guruBesar, kata) {
       sT.getRange("A6").setValue("NAMA GURU BESAR").setFontWeight("bold");
       sT.getRange("B6").setValue(guruBesar);
     }
+    var sync = String(asalSync || "").toUpperCase() === "HADIR" ? null :
+      sepadanHantarKeHadirSemak_("guru", bersih);
     return { ok: true, mesej: bersih.length + " guru disimpan. " +
              "Guru baharu diberi kata laluan lalai '" + KATAGURU_LALAI + "'.",
-             senarai: bersih };
+             senarai: bersih, sync: sync };
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -871,7 +873,7 @@ function apiSimpanGuruBesar(nama, kata) {
 
 // Gabung senarai guru dari sistem pusat tanpa memadam guru tempatan atau
 // menukar kata laluan yang sudah disesuaikan dalam SEMAK.
-function apiImportGuru(senaraiGuru, kata) {
+function apiImportGuru(senaraiGuru, kata, asalSync) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
     if (!Array.isArray(senaraiGuru) || !senaraiGuru.length)
@@ -879,8 +881,10 @@ function apiImportGuru(senaraiGuru, kata) {
     if (senaraiGuru.length > 1000)
       return { ok: false, mesej: "Senarai guru melebihi had 1,000 rekod." };
 
+    var guruSync = [];
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
+    var hasilImport;
     try {
       var sG = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_GURU);
       if (!sG) return { ok: false, mesej: "Sheet GURU tidak wujud." };
@@ -894,19 +898,50 @@ function apiImportGuru(senaraiGuru, kata) {
       senaraiGuru.forEach(function (item) {
         var nama = (item && typeof item === "object" ? item.nama : item);
         nama = (nama || "").toString().trim().replace(/\s+/g, " ").toUpperCase();
-        if (!nama || dilihat[nama] || sedia[nama]) { langkau++; return; }
+        if (!nama || dilihat[nama]) { langkau++; return; }
         dilihat[nama] = true;
+        guruSync.push(nama);
+        if (sedia[nama]) { langkau++; return; }
         sedia[nama] = true;
         baris.push([nama, KATAGURU_LALAI]);
       });
       if (baris.length) {
         sG.getRange(sG.getLastRow() + 1, 1, baris.length, 2).setValues(baris);
       }
-      return { ok: true, tambah: baris.length, langkau: langkau,
+      hasilImport = { ok: true, tambah: baris.length, langkau: langkau,
         mesej: baris.length + " guru baharu digabung. Kata laluan dan guru sedia ada dikekalkan." };
     } finally { lock.releaseLock(); }
+    if (String(asalSync || "").toUpperCase() !== "HADIR")
+      hasilImport.sync = sepadanHantarKeHadirSemak_("guru", guruSync);
+    return hasilImport;
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
+  }
+}
+
+function sepadanHantarKeHadirSemak_(jenis, senarai) {
+  var props = PropertiesService.getScriptProperties();
+  var rahsia = props.getProperty("SEPADAN_SYNC_SECRET");
+  var url = props.getProperty("SEPADAN_HADIR_URL") ||
+    "https://script.google.com/macros/s/AKfycbzqppwOPHQZz7dZe9OW3Hbhf1nA5wdfqBeQUUXmOxrt1ILDezw_HsLE4wgpbKMt8hbe/exec";
+  if (!rahsia) return { ok: false, mesej: "Rahsia penyelarasan SePadan belum ditetapkan." };
+  try {
+    var respons = UrlFetchApp.fetch(url, {
+      method: "post", contentType: "text/plain; charset=utf-8", followRedirects: true,
+      muteHttpExceptions: true,
+      payload: JSON.stringify({
+        mode: "hadir",
+        kaedah: jenis === "guru" ? "terimaSyncGuru" : "terimaSyncMurid",
+        argumen: [senarai || [], "SEMAK", rahsia]
+      })
+    });
+    var data = JSON.parse(respons.getContentText());
+    if (!data.ok) throw new Error(data.ralat || "Relay HADIR gagal.");
+    if (!data.hasil || data.hasil.ok === false)
+      throw new Error((data.hasil && data.hasil.mesej) || "Relay HADIR gagal.");
+    return { ok: data.hasil.syncOk !== false, mesej: data.hasil.mesej || "Semua sistem diselaraskan." };
+  } catch (e) {
+    return { ok: false, mesej: e && e.message ? e.message : String(e) };
   }
 }
 
@@ -1029,7 +1064,7 @@ function apiTukarKataLaluan(baru, kata) {
 
 // Muat naik data murid dari CSV (cth: eksport iDMe/APDM)
 // senarai = [{nama, jantina, kelas, tahun, agama, ic}]
-function apiUploadMurid(senarai, kata) {
+function apiUploadMurid(senarai, kata, asalSync) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
     if (!senarai || !senarai.length)
@@ -1084,8 +1119,14 @@ function apiUploadMurid(senarai, kata) {
     sMu.getRange(2, 1, baris.length, 6).setValues(baris);
     segerakCalonPeperiksaanAktif();
 
+    var sync = null;
+    if (String(asalSync || "").toUpperCase() !== "HADIR") {
+      sync = sepadanHantarKeHadirSemak_("murid", baris.map(function (r) {
+        return { nama: r[0], jantina: r[1], kelas: r[2], tahun: r[3], agama: r[4], ic: r[5] };
+      }));
+    }
     return { ok: true, mesej: baris.length + " murid dimuat naik. " +
-             "Senarai murid lama digantikan sepenuhnya." };
+             "Senarai murid lama digantikan sepenuhnya.", sync: sync };
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -2295,7 +2336,7 @@ function apiPadamPeperiksaan(nama, buatBackupDulu, kata) {
   }
 }
 
-function apiSimpanGuru(senaraiGuru, guruBesar, kata) {
+function apiSimpanGuru(senaraiGuru, guruBesar, kata, asalSync) {
   try {
     // Kekal serasi dengan panggilan lama: apiSimpanGuru(senaraiGuru, kata).
     if (kata === undefined) { kata = guruBesar; guruBesar = null; }
@@ -2325,9 +2366,11 @@ function apiSimpanGuru(senaraiGuru, guruBesar, kata) {
       sT.getRange("A6").setValue("NAMA GURU BESAR").setFontWeight("bold");
       sT.getRange("B6").setValue(guruBesar);
     }
+    var sync = String(asalSync || "").toUpperCase() === "HADIR" ? null :
+      sepadanHantarKeHadirSemak_("guru", bersih);
     return { ok: true, mesej: bersih.length + " guru disimpan. " +
              "Guru baharu diberi kata laluan lalai '" + KATAGURU_LALAI + "'.",
-             senarai: bersih };
+             senarai: bersih, sync: sync };
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -2467,7 +2510,7 @@ function apiTukarKataLaluan(baru, kata) {
 
 // Muat naik data murid dari CSV (cth: eksport iDMe/APDM)
 // senarai = [{nama, jantina, kelas, tahun, agama, ic}]
-function apiUploadMurid(senarai, kata) {
+function apiUploadMurid(senarai, kata, asalSync) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
     if (!senarai || !senarai.length)
@@ -2522,8 +2565,14 @@ function apiUploadMurid(senarai, kata) {
     sMu.getRange(2, 1, baris.length, 6).setValues(baris);
     segerakCalonPeperiksaanAktif();
 
+    var sync = null;
+    if (String(asalSync || "").toUpperCase() !== "HADIR") {
+      sync = sepadanHantarKeHadirSemak_("murid", baris.map(function (r) {
+        return { nama: r[0], jantina: r[1], kelas: r[2], tahun: r[3], agama: r[4], ic: r[5] };
+      }));
+    }
     return { ok: true, mesej: baris.length + " murid dimuat naik. " +
-             "Senarai murid lama digantikan sepenuhnya." };
+             "Senarai murid lama digantikan sepenuhnya.", sync: sync };
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }

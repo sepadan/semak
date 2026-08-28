@@ -23,8 +23,8 @@
 |---|---|
 | Sistem | SEMAK - Sistem Markah SK Paya Redan |
 | Tarikh disahkan | 28 Ogos 2026 |
-| Commit kod fungsi terkini | `HEAD` - import guru merge-only + PWA SEMAK v1.0.0 |
-| Deployment Apps Script | Versi 59 |
+| Commit kod fungsi terkini | `HEAD` - relay murid/guru tiga sistem + PWA SEMAK v1.1.0 |
+| Deployment Apps Script | Versi 60 |
 | Deployment ID | `AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H` |
 | URL pengguna | <https://sepadan.github.io/semak/> |
 | URL API | <https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec> |
@@ -57,6 +57,11 @@ senarai isu, lihat hab.
    version**. Jangan cipta deployment baharu kerana URL pengguna mesti kekal.
 10. Setiap pembaikan mesti mengemas kini `Rekod perubahan` dan `Ujian pengesahan`
     dalam blueprint ini.
+11. Relay SePadan hanya membawa data asas murid dan guru. Markah, peperiksaan,
+    subjek, tugasan, sesi dan kata laluan kekal di SEMAK serta tertakluk kepada
+    semua pengesahan/kebenaran SEMAK.
+12. Rahsia `SEPADAN_SYNC_SECRET` hanya dalam Script Properties. Upload dari
+    HADIR membawa penanda asal dan tidak boleh dicetuskan semula ke relay.
 
 ## 3. Seni bina ringkas
 
@@ -74,6 +79,7 @@ Apps Script Web App: doPost / fungsi api*
 Google Sheets SEMAK v1
         |
         +--> Dashboard SePadan membaca agregat sahaja
+        +--> upload murid/guru tempatan → relay HADIR → AKSI
 ```
 
 Sistem tiada pangkalan data atau pelayan lain. Google Sheets ialah pangkalan data
@@ -82,7 +88,7 @@ tunggal. Apps Script ialah backend. GitHub Pages ialah paparan pengguna.
 ### PWA GitHub Pages
 
 - Nama pemasangan ialah `SEMAK — Sistem Markah SK Paya Redan`; versi paparan
-  `SEMAK v1.0.0 · PWA`.
+  `SEMAK v1.1.0 · PWA`.
 - Ikon PWA menggunakan lambang sekolah dengan lencana biru `SEMAK`. Saiz 192,
   512, maskable 512, Apple 180 serta favicon 32/48 disediakan.
 - `pwa.js` mendaftar Service Worker dengan `updateViaCache: 'none'` dan memanggil
@@ -616,6 +622,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
+| 2026-08-28 | `HEAD` | 60 | SEMAK v1.1.0: upload/simpan murid dan guru tempatan menghantar data asas ke relay HADIR; import daripada HADIR berpenanda asal tidak berpusing. Kata laluan, markah, tugasan, calon dan syarat SEMAK kekal tempatan. Cache/iframe PWA dinaikkan serentak | Kedua-dua takrif backend berganda diuji, rahsia hanya Script Properties, relay dan sintaks lulus | Tiada data sebenar dalam repo/log; sync sebenar berlaku hanya apabila admin menggunakan import |
 | 2026-08-28 | `HEAD` | 59 | Tambah `apiImportGuru` untuk penyelarasan guru merge-only daripada HADIR; kekalkan guru/kata laluan tempatan, kunci tulisan, append pukal, senarai putih RPC dan pembatalan cache | Sintaks `AppBackend.gs` dan ujian regresi import lulus; fail hidup disahkan sepadan; endpoint produksi menerima kaedah dan menolak kata laluan palsu sebelum tulisan | Tiada data guru sebenar diubah semasa ujian |
 | 2026-08-24 | `485bf96` | 58 (tidak berubah) | Jadikan SEMAK PWA v1.0.0: ikon berasaskan lambang sekolah, manifest Android/iOS, auto-update selamat tanpa muat semula paksa, cache cangkerang statik dan paparan luar talian | Sintaks/manifest/6 ikon lulus; tempatan 390×844 status `sedia`; produksi GitHub Pages run #35 berjaya; semua aset PWA HTTP 200; API/data tiada dalam cache; fallback tanpa pelayan lulus | Tiada; fail `src/` dan backend tidak berubah |
 | 2026-08-22 | - | - | Gabungkan lima bahagian daripada blueprint PDF 20 Ogos ke dalam fail ini: bentuk pulangan `apiAnalisis`, peraturan kelayakan subjek, nota `LockService` pada simpan markah, had skop OAuth `spreadsheets.currentonly`, dan senarai medan agregat dashboard termasuk `peperiksaan_semua` | Dokumentasi sahaja; kandungan disemak semula terhadap `Code.gs`, `AppBackend.gs` dan `Semak.gs`. Tiada kod diubah | Tiada |

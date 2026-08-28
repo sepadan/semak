@@ -1,4 +1,4 @@
-// SEMAK v1.0.0 · PWA — pemasangan, kemas kini dan kawalan luar talian.
+// SEMAK v1.1.0 · PWA — pemasangan, kemas kini dan kawalan luar talian.
 (function () {
   'use strict';
 
