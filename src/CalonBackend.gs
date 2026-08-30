@@ -108,9 +108,12 @@ function _calonLamaDaripadaMarkah(peperiksaan, muridSemasa, db) {
 
 // Migrasi sekali: peperiksaan aktif menggunakan senarai MURID semasa;
 // peperiksaan lama dibina daripada rekod MARKAH supaya sejarahnya kekal.
-function migrasiCalonPeperiksaanSekali() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+function migrasiCalonPeperiksaanSekali(sudahDikunci) {
+  var lock = null;
+  if (!sudahDikunci) {
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+  }
   try {
     var s = _sheetCalonPeperiksaan();
     var sedia = s.getLastRow() > 1 ? s.getRange(2, 1, s.getLastRow() - 1, 8).getValues() : [];
@@ -134,7 +137,7 @@ function migrasiCalonPeperiksaanSekali() {
     if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, 8).clearContent();
     if (baharu.length) s.getRange(2, 1, baharu.length, 8).setValues(baharu);
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
 }
 
@@ -167,15 +170,19 @@ function getMuridPeperiksaan(peperiksaan) {
   });
 }
 
-function segerakCalonPeperiksaan(peperiksaan) {
+function segerakCalonPeperiksaan(peperiksaan, murid, sudahDikunci) {
   peperiksaan = _teksCalon(peperiksaan);
   if (!peperiksaan) return 0;
-  migrasiCalonPeperiksaanSekali();
-
-  var murid = getMuridSemua();
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  var lock = null;
+  if (!sudahDikunci) {
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+  }
   try {
+    migrasiCalonPeperiksaanSekali(true);
+    // Bacaan ini mesti berlaku selepas kunci diperoleh supaya snapshot tidak
+    // boleh menulis semula senarai lama selepas penggantian MURID yang baharu.
+    murid = murid || getMuridSemua();
     var s = _sheetCalonPeperiksaan();
     var lama = s.getLastRow() > 1 ? s.getRange(2, 1, s.getLastRow() - 1, 8).getValues() : [];
     var kekal = lama.filter(function (r) { return _teksCalon(r[0]) !== peperiksaan; });
@@ -184,22 +191,42 @@ function segerakCalonPeperiksaan(peperiksaan) {
     if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, 8).clearContent();
     if (semua.length) s.getRange(2, 1, semua.length, 8).setValues(semua);
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
   return murid.length;
 }
 
-function pastikanSnapshotCalonPeperiksaan(peperiksaan) {
+function pastikanSnapshotCalonPeperiksaan(peperiksaan, sudahDikunci) {
   peperiksaan = _teksCalon(peperiksaan);
   if (!peperiksaan) return 0;
-  migrasiCalonPeperiksaanSekali();
-  if (!_adaSnapshotCalon(peperiksaan)) return segerakCalonPeperiksaan(peperiksaan);
-  return getMuridPeperiksaan(peperiksaan).length;
+  var lock = null;
+  if (!sudahDikunci) {
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+  }
+  try {
+    migrasiCalonPeperiksaanSekali(true);
+    if (!_adaSnapshotCalon(peperiksaan)) {
+      return segerakCalonPeperiksaan(peperiksaan, null, true);
+    }
+    return getMuridPeperiksaan(peperiksaan).length;
+  } finally {
+    if (lock) lock.releaseLock();
+  }
 }
 
-function segerakCalonPeperiksaanAktif() {
-  var aktif = _teksCalon(getTetapan().aktif);
-  return aktif ? segerakCalonPeperiksaan(aktif) : 0;
+function segerakCalonPeperiksaanAktif(sudahDikunci) {
+  var lock = null;
+  if (!sudahDikunci) {
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+  }
+  try {
+    var aktif = _teksCalon(getTetapan().aktif);
+    return aktif ? segerakCalonPeperiksaan(aktif, null, true) : 0;
+  } finally {
+    if (lock) lock.releaseLock();
+  }
 }
 
 function padamCalonPeperiksaan(peperiksaan) {

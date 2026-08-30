@@ -339,6 +339,11 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
+      // Tutup tingkap perlumbaan: admin mungkin mengunci/menukar peperiksaan
+      // selepas semakan awal tetapi sebelum skrip memperoleh kunci.
+      var kebenaranTerkunci = _semakKebenaranSimpan(
+        peperiksaan, namaKelas, subjek, auth);
+      if (!kebenaranTerkunci.ok) return kebenaranTerkunci;
       var sMk = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_MARKAH);
       if (!sMk) return { ok: false, mesej: "Sheet MARKAH tidak wujud." };
       if (sMk.getMaxColumns() < 9) sMk.insertColumnAfter(sMk.getMaxColumns());
@@ -645,7 +650,10 @@ function apiTambahPeperiksaan(nama, kata) {
     nama = (nama || "").toString().trim().toUpperCase();
     if (!nama) return { ok: false, mesej: "Nama peperiksaan kosong." };
 
-    var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
     if (!sP) return { ok: false, mesej: "Sheet PEPERIKSAAN tidak wujud." };
     var lastRow = sP.getLastRow();
     if (lastRow > 1) {
@@ -662,6 +670,9 @@ function apiTambahPeperiksaan(nama, kata) {
     }
     sP.getRange(lastRow + 1, 1, 1, 6).setValues([[nama, "", "", "", "", "{}"]]);
     return { ok: true, mesej: "Peperiksaan ditambah. Pilih kelas dan mata pelajaran dalam jadual.", nama: nama };
+    } finally {
+      lock.releaseLock();
+    }
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -675,7 +686,10 @@ function apiSimpanPeperiksaan(nama, konfigurasi, kunci, kata) {
     nama = (nama || "").toString().trim().toUpperCase();
     if (!nama) return { ok: false, mesej: "Nama peperiksaan kosong." };
 
-    var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
     if (!sP) return { ok: false, mesej: "Sheet PEPERIKSAAN tidak wujud." };
 
     var peta = {};
@@ -743,6 +757,9 @@ function apiSimpanPeperiksaan(nama, konfigurasi, kunci, kata) {
     }
     sP.getRange(lastRow + 1, 1, 1, 6).setValues([[nama, kelasStr, t1Str, t2Str, kunciStr, konfigStr]]);
     return { ok: true, mesej: "Peperiksaan '" + nama + "' ditambah." };
+    } finally {
+      lock.releaseLock();
+    }
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -1077,13 +1094,21 @@ function apiUploadMurid(senarai, kata, asalSync) {
     if (!baris.length)
       return { ok: false, mesej: "Tiada baris murid yang sah. Semak pemetaan lajur." };
 
-    var sMu = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_MURID);
-    if (!sMu) return { ok: false, mesej: "Sheet MURID tidak wujud." };
-    isiICMarkahDaripadaMurid(getMuridSemua());
-    var lastRow = sMu.getLastRow();
-    if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
-    sMu.getRange(2, 1, baris.length, 6).setValues(baris);
-    segerakCalonPeperiksaanAktif();
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sMu = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_MURID);
+      if (!sMu) return { ok: false, mesej: "Sheet MURID tidak wujud." };
+      isiICMarkahDaripadaMurid(getMuridSemua());
+      var lastRow = sMu.getLastRow();
+      if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
+      sMu.getRange(2, 1, baris.length, 6).setValues(baris);
+      // Kunci yang sama melindungi MURID dan snapshot calon; true mengelakkan
+      // cubaan mengambil ScriptLock kali kedua dalam penyelaras calon.
+      segerakCalonPeperiksaanAktif(true);
+    } finally {
+      lock.releaseLock();
+    }
 
     var sync = null;
     if (String(asalSync || "").toUpperCase() !== "HADIR") {
@@ -1352,18 +1377,24 @@ function apiBackupAdmin(kata) {
 function apiTetapkanAktif(nama, kata) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
-    var sT = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TETAPAN);
-    if (!sT) return { ok: false, mesej: "Sheet TETAPAN tidak wujud." };
-    nama = (nama || "").toString().trim();
-    if (nama) {
-      var wujud = getPeperiksaanSemua().some(function (p) { return p.nama === nama; });
-      if (!wujud) return { ok: false, mesej: "Peperiksaan dipilih tidak ditemui." };
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sT = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TETAPAN);
+      if (!sT) return { ok: false, mesej: "Sheet TETAPAN tidak wujud." };
+      nama = (nama || "").toString().trim();
+      if (nama) {
+        var wujud = getPeperiksaanSemua().some(function (p) { return p.nama === nama; });
+        if (!wujud) return { ok: false, mesej: "Peperiksaan dipilih tidak ditemui." };
+      }
+      sT.getRange("B4").setValue(nama);
+      if (nama) pastikanSnapshotCalonPeperiksaan(nama, true);
+      return { ok: true, mesej: nama
+        ? "'" + nama + "' kini peperiksaan aktif untuk pengisian markah."
+        : "Tiada peperiksaan aktif. Pengisian markah ditutup." };
+    } finally {
+      lock.releaseLock();
     }
-    sT.getRange("B4").setValue(nama);
-    if (nama) pastikanSnapshotCalonPeperiksaan(nama);
-    return { ok: true, mesej: nama
-      ? "'" + nama + "' kini peperiksaan aktif untuk pengisian markah."
-      : "Tiada peperiksaan aktif. Pengisian markah ditutup." };
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -1825,6 +1856,11 @@ function apiSimpanMarkah(peperiksaan, namaKelas, subjek, data, auth) {
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
+      // Tutup tingkap perlumbaan: admin mungkin mengunci/menukar peperiksaan
+      // selepas semakan awal tetapi sebelum skrip memperoleh kunci.
+      var kebenaranTerkunci = _semakKebenaranSimpan(
+        peperiksaan, namaKelas, subjek, auth);
+      if (!kebenaranTerkunci.ok) return kebenaranTerkunci;
       var sMk = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_MARKAH);
       if (!sMk) return { ok: false, mesej: "Sheet MARKAH tidak wujud." };
       if (sMk.getMaxColumns() < 9) sMk.insertColumnAfter(sMk.getMaxColumns());
@@ -2131,7 +2167,10 @@ function apiTambahPeperiksaan(nama, kata) {
     nama = (nama || "").toString().trim().toUpperCase();
     if (!nama) return { ok: false, mesej: "Nama peperiksaan kosong." };
 
-    var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
     if (!sP) return { ok: false, mesej: "Sheet PEPERIKSAAN tidak wujud." };
     var lastRow = sP.getLastRow();
     if (lastRow > 1) {
@@ -2148,6 +2187,9 @@ function apiTambahPeperiksaan(nama, kata) {
     }
     sP.getRange(lastRow + 1, 1, 1, 6).setValues([[nama, "", "", "", "", "{}"]]);
     return { ok: true, mesej: "Peperiksaan ditambah. Pilih kelas dan mata pelajaran dalam jadual.", nama: nama };
+    } finally {
+      lock.releaseLock();
+    }
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -2161,7 +2203,10 @@ function apiSimpanPeperiksaan(nama, konfigurasi, kunci, kata) {
     nama = (nama || "").toString().trim().toUpperCase();
     if (!nama) return { ok: false, mesej: "Nama peperiksaan kosong." };
 
-    var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sP = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_PEPERIKSAAN);
     if (!sP) return { ok: false, mesej: "Sheet PEPERIKSAAN tidak wujud." };
 
     var peta = {};
@@ -2229,6 +2274,9 @@ function apiSimpanPeperiksaan(nama, konfigurasi, kunci, kata) {
     }
     sP.getRange(lastRow + 1, 1, 1, 6).setValues([[nama, kelasStr, t1Str, t2Str, kunciStr, konfigStr]]);
     return { ok: true, mesej: "Peperiksaan '" + nama + "' ditambah." };
+    } finally {
+      lock.releaseLock();
+    }
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }
@@ -2514,13 +2562,21 @@ function apiUploadMurid(senarai, kata, asalSync) {
     if (!baris.length)
       return { ok: false, mesej: "Tiada baris murid yang sah. Semak pemetaan lajur." };
 
-    var sMu = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_MURID);
-    if (!sMu) return { ok: false, mesej: "Sheet MURID tidak wujud." };
-    isiICMarkahDaripadaMurid(getMuridSemua());
-    var lastRow = sMu.getLastRow();
-    if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
-    sMu.getRange(2, 1, baris.length, 6).setValues(baris);
-    segerakCalonPeperiksaanAktif();
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sMu = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_MURID);
+      if (!sMu) return { ok: false, mesej: "Sheet MURID tidak wujud." };
+      isiICMarkahDaripadaMurid(getMuridSemua());
+      var lastRow = sMu.getLastRow();
+      if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
+      sMu.getRange(2, 1, baris.length, 6).setValues(baris);
+      // Kunci yang sama melindungi MURID dan snapshot calon; true mengelakkan
+      // cubaan mengambil ScriptLock kali kedua dalam penyelaras calon.
+      segerakCalonPeperiksaanAktif(true);
+    } finally {
+      lock.releaseLock();
+    }
 
     var sync = null;
     if (String(asalSync || "").toUpperCase() !== "HADIR") {
@@ -2789,18 +2845,24 @@ function apiBackupAdmin(kata) {
 function apiTetapkanAktif(nama, kata) {
   try {
     if (!semakAdmin(kata)) return { ok: false, mesej: "Kata laluan admin salah." };
-    var sT = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TETAPAN);
-    if (!sT) return { ok: false, mesej: "Sheet TETAPAN tidak wujud." };
-    nama = (nama || "").toString().trim();
-    if (nama) {
-      var wujud = getPeperiksaanSemua().some(function (p) { return p.nama === nama; });
-      if (!wujud) return { ok: false, mesej: "Peperiksaan dipilih tidak ditemui." };
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sT = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TETAPAN);
+      if (!sT) return { ok: false, mesej: "Sheet TETAPAN tidak wujud." };
+      nama = (nama || "").toString().trim();
+      if (nama) {
+        var wujud = getPeperiksaanSemua().some(function (p) { return p.nama === nama; });
+        if (!wujud) return { ok: false, mesej: "Peperiksaan dipilih tidak ditemui." };
+      }
+      sT.getRange("B4").setValue(nama);
+      if (nama) pastikanSnapshotCalonPeperiksaan(nama, true);
+      return { ok: true, mesej: nama
+        ? "'" + nama + "' kini peperiksaan aktif untuk pengisian markah."
+        : "Tiada peperiksaan aktif. Pengisian markah ditutup." };
+    } finally {
+      lock.releaseLock();
     }
-    sT.getRange("B4").setValue(nama);
-    if (nama) pastikanSnapshotCalonPeperiksaan(nama);
-    return { ok: true, mesej: nama
-      ? "'" + nama + "' kini peperiksaan aktif untuk pengisian markah."
-      : "Tiada peperiksaan aktif. Pengisian markah ditutup." };
   } catch (err) {
     return { ok: false, mesej: "Ralat: " + err.message };
   }

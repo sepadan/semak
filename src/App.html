@@ -2564,6 +2564,8 @@ function kelasSertai(cfg) {
 function subjekSertai(cfg, kelas) {
   var dipilih = cfg && cfg.konfigurasi && Array.isArray(cfg.konfigurasi[kelas]) ? cfg.konfigurasi[kelas].filter(Boolean) : [];
   if (dipilih.length) return dipilih;
+  var lama = cfg ? (isTahap1JS(kelas) ? cfg.subjekT1 : cfg.subjekT2) : [];
+  if (Array.isArray(lama) && lama.length) return lama;
   var dataKelas = KELAS_CACHE && KELAS_CACHE[kelas];
   return dataKelas && Array.isArray(dataKelas.subjek) ? dataKelas.subjek.map(function(s) { return s.n; }) : [];
 }

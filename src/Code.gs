@@ -505,8 +505,6 @@ function segerakMurid(senyap) {
     return 0;
   }
 
-  // Pautkan rekod markah lama kepada IC sebelum daftar MURID ditulis semula.
-  isiICMarkahDaripadaMurid(getMuridSemua());
   var raw = s1.getDataRange().getValues();
   var mapTahun = {
     "TAHUN SATU":"1","TAHUN DUA":"2","TAHUN TIGA":"3",
@@ -535,11 +533,19 @@ function segerakMurid(senyap) {
     ]);
   }
 
-  var lastRow = sMu.getLastRow();
-  if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
-  if (senarai.length) sMu.getRange(2, 1, senarai.length, 6).setValues(senarai);
-  if (typeof segerakCalonPeperiksaanAktif === "function")
-    segerakCalonPeperiksaanAktif();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    // Pautkan markah lama kepada IC sebelum daftar MURID ditulis semula.
+    isiICMarkahDaripadaMurid(getMuridSemua());
+    var lastRow = sMu.getLastRow();
+    if (lastRow > 1) sMu.getRange(2, 1, lastRow - 1, 6).clearContent();
+    if (senarai.length) sMu.getRange(2, 1, senarai.length, 6).setValues(senarai);
+    if (typeof segerakCalonPeperiksaanAktif === "function")
+      segerakCalonPeperiksaanAktif(true);
+  } finally {
+    lock.releaseLock();
+  }
 
   if (senyap !== true)
     SpreadsheetApp.getUi().alert("🔄 " + senarai.length + " murid disegerak dari Sheet1.");
