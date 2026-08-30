@@ -24,7 +24,7 @@
 | Sistem | SEMAK - Sistem Markah SK Paya Redan |
 | Tarikh disahkan | 30 Ogos 2026 |
 | Commit kod fungsi terkini | `HEAD` - status/merge/sync guru tiga sistem + PWA SEMAK v1.2.0 |
-| Deployment Apps Script | Versi 61 |
+| Deployment Apps Script | Versi 62 |
 | Deployment ID | `AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H` |
 | URL pengguna | <https://sepadan.github.io/semak/> |
 | URL API | <https://script.google.com/macros/s/AKfycbx306dN8vd3HR3Mu4xdum8MpG0PkbbwbKgsu88jx-nMG2LnEWszU350S2ez8TU_kX_H/exec> |
@@ -623,7 +623,7 @@ YYYY-MM-DD | commit | deployment | perubahan | ujian | kesan data
 
 | Tarikh | Commit | Deployment | Perubahan | Ujian | Kesan data |
 |---|---|---:|---|---|---|
-| 2026-08-30 | branch audit | Belum diterbitkan | Kunci ganti penuh `MURID` dari upload/Sheet1, perubahan peperiksaan aktif dan simpanan markah menggunakan `ScriptLock` yang sama; hak simpan disemak semula selepas kunci; snapshot calon dibaca serta ditulis di dalam operasi terkunci yang sama tanpa kunci bersarang; fallback subjek T1/T2 bagi peperiksaan lama dipulihkan | Ujian regresi kedua-dua takrif backend berganda, semakan sintaks `.gs`/skrip HTML, suite Node dan semakan bebas race/deadlock lulus; tiada RPC produksi dipanggil | Tiada data sebenar disentuh; deployment produksi kekal 61 sehingga branch disemak dan diterbitkan |
+| 2026-08-30 | `d4c69e5` | 62 | Kunci ganti penuh `MURID` dari upload/Sheet1, perubahan peperiksaan aktif dan simpanan markah menggunakan `ScriptLock` yang sama; hak simpan disemak semula selepas kunci; snapshot calon dibaca serta ditulis di dalam operasi terkunci yang sama tanpa kunci bersarang; fallback subjek T1/T2 bagi peperiksaan lama dipulihkan | Ujian regresi kedua-dua takrif backend berganda, semakan sintaks `.gs`/skrip HTML, suite Node dan semakan bebas race/deadlock lulus; deployment diterbitkan pada URL sedia ada | Tiada data sebenar disentuh semasa ujian atau penerbitan |
 | 2026-08-29 | `HEAD` | 61 | SEMAK v1.2.0: tab `GURU` mendapat status; simpan senarai tempatan menjadi sync aktif penuh, import menyokong merge/sync, guru yang tiada dinyahaktifkan tanpa membuang kata laluan/tugasan/markah/sejarah, dan relay membawa mod ke HADIR. UI CSV memaparkan pratonton serta pengesahan sebelum sync penuh | Ujian import/status, kedua-dua takrif backend berganda, sintaks dan versi cache/iframe lulus; deployment diterbitkan pada URL sama | Tiada guru produksi ditambah atau dinyahaktif semasa ujian teknikal |
 | 2026-08-28 | `HEAD` | 60 | SEMAK v1.1.0: upload/simpan murid dan guru tempatan menghantar data asas ke relay HADIR; import daripada HADIR berpenanda asal tidak berpusing. Kata laluan, markah, tugasan, calon dan syarat SEMAK kekal tempatan. Cache/iframe PWA dinaikkan serentak | Kedua-dua takrif backend berganda diuji, rahsia hanya Script Properties, relay dan sintaks lulus | Tiada data sebenar dalam repo/log; sync sebenar berlaku hanya apabila admin menggunakan import |
 | 2026-08-28 | `HEAD` | 59 | Tambah `apiImportGuru` untuk penyelarasan guru merge-only daripada HADIR; kekalkan guru/kata laluan tempatan, kunci tulisan, append pukal, senarai putih RPC dan pembatalan cache | Sintaks `AppBackend.gs` dan ujian regresi import lulus; fail hidup disahkan sepadan; endpoint produksi menerima kaedah dan menolak kata laluan palsu sebelum tulisan | Tiada data guru sebenar diubah semasa ujian |
